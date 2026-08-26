@@ -2199,6 +2199,10 @@ async function doVideo(s,prompt){
     const d1=j.video_url||j.url||j.output_url||'';
     src=String(d0||d1||'').trim();
     if(src&&!src.startsWith('http'))src='';
+    const subSt=String(j.status||j.state||'').toLowerCase();
+    if(!src&&(subSt==='failed'||subSt==='error'||subSt==='cancelled')){
+      throw new Error('视频任务失败：'+(j.error||j.reason||'上游未给原因').slice(0,160));
+    }
     if(!src){
       // 轮询
       const id=j.id||(j.data&&(typeof j.data==='string'?j.data:j.data.id))||'';
