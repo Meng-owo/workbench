@@ -1,0 +1,2 @@
+No API keys are shipped in this repository.
+Users enter their own endpoints/keys in the browser; stored in localStorage only.
