@@ -1010,6 +1010,14 @@ body.less-fx *{animation-duration:.01ms!important;animation-iteration-count:1!im
             <p style="font-size:12px;color:var(--muted);padding:4px 15px 12px;line-height:1.65">协议（写死）：<code>POST {base}/videos/generations</code> 提交（body: model/prompt），立即带 url 则直取；否则 <code>GET {base}/videos/{id}</code> 按间隔轮询到 done/failed。结果页内可播+下载。未配置只引导。<button type="button" class="chip-btn" style="display:inline;padding:2px 8px;margin-left:4px" onclick="testVideo()">测试生成</button></p>
           </div>
         </div>
+        <div class="set-group"><b>测站 · 浏览器直连 + 可选网关</b>
+          <div class="card">
+            <div class="field"><label>网关 Base URL（可选）</label><div class="fin"><input id="pbGwBase" placeholder="留空走浏览器直连" onchange="saveProbe()" onblur="saveProbe()"></div></div>
+            <div class="field"><label>网关 Token（可选）</label><div class="fin"><input id="pbGwToken" type="password" placeholder="网关鉴权 token" onchange="saveProbe()" onblur="saveProbe()"></div></div>
+            <div class="field"><label>体检默认目标（每行一条 URL）</label><div class="fin"><textarea id="pbTargets" rows="2" placeholder="https://example.com&#10;https://api.example.com" onchange="saveProbe()" onblur="saveProbe()" style="width:100%;resize:vertical;min-height:50px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;font-size:13px;color:var(--ink)"></textarea></div>
+            <p style="font-size:12px;color:var(--muted);padding:4px 15px 12px;line-height:1.65">工具箱「测站」= 单 URL 延迟（读输入框）；「站点体检」= 多目标（默认列表 + 输入框追加）。浏览器直连受 CORS 限制，有网关优先走 <code>POST {base}/v1/probe</code>。</p>
+          </div>
+        </div>
         <div class="set-group"><b>平台能力</b>
           <div class="card">
             <div class="row"><span class="ric ic-blue"><svg class="i i-s"><use href="#i-globe"/></svg></span><span class="rt"><b>联网搜索</b><span>工具开关镜像 · 真源见上方</span></span><span class="badge badge-ok">输入区</span></div>
@@ -1168,7 +1176,8 @@ function defaults(){return{
   webSearch:{provider:'tavily',endpoint:'https://api.tavily.com/search',key:''},
   imageGen:{base:'',key:'',model:'dall-e-3',size:'1024x1024'},
   speech:{base:'',key:'',model:'tts-1',voice:'alloy'},
-  video:{base:'',key:'',model:'',pollMs:5000}
+  video:{base:'',key:'',model:'',pollMs:5000},
+  probe:{gwBase:'',gwToken:'',defaultTargets:''}
 };}
 let DB=null;
 function loadDB(){
@@ -1195,7 +1204,7 @@ let _focusBack=null;
 function openSheet(n){
   try{_focusBack=document.activeElement;}catch(e){_focusBack=null;}
   closePanels();$(n).classList.add('open');if(window.innerWidth<900)$('scrim').classList.add('on');
-  if(n==='settings'){fillWebSearchForm();fillImageGenForm();fillSpeechForm();fillVideoForm();}
+  if(n==='settings'){fillWebSearchForm();fillImageGenForm();fillSpeechForm();fillVideoForm();fillProbeForm();}
   setTimeout(()=>{const root=$(n);if(!root)return;const f=root.querySelector('input:not([type=hidden]),textarea,button.icon-btn,[tabindex]:not([tabindex="-1"])');if(f)try{f.focus();}catch(e){};},30);
 }
 function closePanels(){$('toolbox').classList.remove('open');$('settings').classList.remove('open');$('modelMenu').classList.remove('open');$('avatars').classList.remove('open');$('sessmenu').classList.remove('open');$('memmgr').classList.remove('open');}
@@ -2251,6 +2260,98 @@ async function doVideo(s,prompt){
   }
 }
 
+/* ================= R4 测站 + 站点体检 ================= */
+function ensureProbe(){
+  if(!DB.probe)DB.probe={gwBase:'',gwToken:'',defaultTargets:''};
+  return DB.probe;
+}
+function fillProbeForm(){
+  const p=ensureProbe();
+  const b=$('pbGwBase'),t=$('pbGwToken'),d=$('pbTargets');
+  if(b)b.value=p.gwBase||'';if(t)t.value=p.gwToken||'';if(d)d.value=p.defaultTargets||'';
+}
+function saveProbe(){
+  const p=ensureProbe();
+  const b=$('pbGwBase'),t=$('pbGwToken'),d=$('pbTargets');
+  if(b)p.gwBase=(b.value||'').trim().replace(/\/$/,'');
+  if(t)p.gwToken=(t.value||'').trim();
+  if(d)p.defaultTargets=(d.value||'').trim();
+  save();
+}
+function hasGw(){const p=ensureProbe();return !!(p.gwBase&&p.gwBase.trim()&&p.gwToken&&p.gwToken.trim());}
+async function runProbe(mode){
+  closeAll();
+  const pty=ensureProbe();
+  const input=$('promptBox').value.trim();
+  const defaultList=pty.defaultTargets?pty.defaultTargets.split('\n').map(s=>s.trim()).filter(Boolean):[];
+  let targets=[];
+  if(mode==='single'){
+    if(!input){toast('在输入框写要测的 URL，再点测站');$('promptBox').focus();return;}
+    targets=[input];
+  }else{
+    targets=defaultList;
+    if(input)targets.push(input);
+    if(!targets.length){toast('没有可测的目标。设置→功能 填写默认目标，或在输入框写 URL');openSheet('settings');return;}
+  }
+  const s=ensureSession(mode==='single'?('测站 '+input):('站点体检 '+(targets.slice(0,3).join(', '))));
+  s.msgs.push({role:'user',content:'['+(mode==='single'?'测站':'站点体检')+'] '+(mode==='single'?input:targets.join(', '))});
+  s.updatedAt=Date.now();
+  if(s.msgs.filter(m=>m.role==='user').length===1)s.title=('探测·'+(mode==='single'?input:'多目标')).slice(0,22);
+  if(DB.prefs.clearAfter!==false)$('promptBox').value='';autoGrow();
+  showThread();renderThread();renderChatList();save();
+  // 结果卡片
+  const ai={role:'ai',content:'',pending:true,t0:Date.now(),model:{pid:'probe'}};
+  s.msgs.push(ai);renderThread();
+  const sid=pushStep('探测','running',targets.length+' 目标');
+  try{
+    let results=[];
+    if(hasGw()){
+      const r=await fetch(pty.gwBase+'/v1/probe',{
+        method:'POST',headers:Object.assign({'Content-Type':'application/json'},pty.gwToken?{'Authorization':'Bearer '+pty.gwToken}:{}),
+        body:JSON.stringify({targets,mode:mode==='single'?'latency':'full'})
+      });
+      if(!r.ok){const t=await r.text().catch(()=>'');throw new Error('网关返回 HTTP '+r.status+(t?' · '+t.slice(0,120):''));}
+      const j=await r.json();
+      results=(j.data||j.results||[j]).map(x=>({url:x.url||x.target||'?',ok:x.ok||x.success||x.status<400,ms:x.ms||x.latency||x.time||0,status:x.status||x.code||0,err:x.error||x.message||''}));
+    }else{
+      results=await Promise.all(targets.map(async url=>{
+        const t0=performance.now();
+        let ok=false,status=0,err='';
+        try{
+          const r=await fetch(url,{method:'GET',mode:'no-cors',signal:AbortSignal.timeout(15000)});
+          status=r.status||0;
+          ok=status>=200&&status<500;
+        }catch(e){
+          if(e.name==='TimeoutError')err='超时 (>15s)';
+          else if(e.name==='AbortError')err='已停止';
+          else err=e.message==='Failed to fetch'?'CORS 或网络不可达':(e.message||String(e));
+          ok=err.includes('CORS')||!err.includes('超时');
+        }
+        const ms=Math.round(performance.now()-t0);
+        return {url,ok,ms,status,err};
+      }));
+    }
+    // 渲染卡片
+    const lines=results.map((r,i)=>{
+      const icon=r.ok?'✅':(r.err.includes('CORS')?'⚠️':'❌');
+      const ms=r.ms?r.ms+'ms':'';
+      const st=r.status?' H'+r.status:'';
+      const er=r.err?' '+r.err.slice(0,60):'';
+      return icon+' '+(r.url||'#')+(ms?' · '+ms:'')+st+er;
+    }).join('\n');
+    ai.content='## 探测结果\n\n'+lines;
+    patchStep(sid,{status:'done',summary:results.filter(r=>r.ok).length+'/'+results.length+' ok'});
+    toast('探测完成');
+  }catch(e){
+    ai.err='探测失败：'+(e.message||String(e));
+    patchStep(sid,{status:'error',summary:String(ai.err).slice(0,160)});
+    toast('探测失败');
+  }finally{
+    ai.pending=false;state.gen=null;setSendBtn(false);
+    s.updatedAt=Date.now();save();renderThread();renderChatList();renderSandbox();
+  }
+}
+
 /* ================= 发送主链路 ================= */
 function buildMessages(s,noImg){
   const a=DB.agents[s.agentId]||curA();
@@ -2605,7 +2706,8 @@ function exportData(){
     webSearch:{provider:(DB.webSearch&&DB.webSearch.provider)||'tavily',endpoint:(DB.webSearch&&DB.webSearch.endpoint)||'https://api.tavily.com/search',key:''},
     imageGen:{base:(DB.imageGen&&DB.imageGen.base)||'',model:(DB.imageGen&&DB.imageGen.model)||'dall-e-3',size:(DB.imageGen&&DB.imageGen.size)||'1024x1024',key:''},
     speech:{base:(DB.speech&&DB.speech.base)||'',model:(DB.speech&&DB.speech.model)||'tts-1',voice:(DB.speech&&DB.speech.voice)||'alloy',key:''},
-    video:{base:(DB.video&&DB.video.base)||'',model:(DB.video&&DB.video.model)||'',pollMs:(DB.video&&DB.video.pollMs)||5000,key:''}
+    video:{base:(DB.video&&DB.video.base)||'',model:(DB.video&&DB.video.model)||'',pollMs:(DB.video&&DB.video.pollMs)||5000,key:''},
+    probe:{gwBase:(DB.probe&&DB.probe.gwBase)||'',defaultTargets:(DB.probe&&DB.probe.defaultTargets)||'',gwToken:''}
   };
   const blob=new Blob([JSON.stringify(dump,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='workbench-backup.json';a.click();
@@ -2646,6 +2748,10 @@ function importData(){
         if(raw.video&&typeof raw.video==='object'){
           DB.video=Object.assign({base:'',key:'',model:'',pollMs:5000},DB.video||{},raw.video);
           if(!raw.video.key||/勿外传|redact|\*+|已剥离/i.test(String(raw.video.key)))DB.video.key='';
+        }
+        if(raw.probe&&typeof raw.probe==='object'){
+          DB.probe=Object.assign({gwBase:'',gwToken:'',defaultTargets:''},DB.probe||{},raw.probe);
+          if(!raw.probe.gwToken||/勿外传|redact|\*+|已剥离/i.test(String(raw.probe.gwToken)))DB.probe.gwToken='';
         }
         if(Array.isArray(raw.providers)){
           DB.providers=raw.providers.map(p=>({
@@ -2761,7 +2867,7 @@ const activeTools=new Set();
 /** 网页端可真接的挂载工具（可点亮） */
 const TOOL_LIVE=new Set(['联网搜索','深度思考','长期记忆']);
 /** 点击即行动，不进 activeTools 挂载 */
-const TOOL_ACTION=new Set(['视觉理解','图像生成','语音合成','视频生成']);
+const TOOL_ACTION=new Set(['视觉理解','图像生成','语音合成','视频生成','测站','站点体检']);
 /** 其余全部未接 */
 const TOOL_UNAVAILABLE_HINT={
   '音乐播放':'网页端未接听歌运行时（规划 REAL-4 网关）',
@@ -2775,8 +2881,6 @@ const TOOL_UNAVAILABLE_HINT={
   '代码运行':'网页端未接代码执行',
   '文件处理':'网页端未接文件/PDF 管线',
   '仓库同步':'网页端未接 git 推送',
-  '站点体检':'网页端未接安检',
-  '测站':'网页端未接测站（规划 REAL-3）',
   '节点同步':'网页端未接节点同步'
 };
 function markToolboxHonesty(){
@@ -2790,6 +2894,7 @@ function markToolboxHonesty(){
     else if(t==='视觉理解'){badge.textContent='选图';b.classList.add('tb-live');b.disabled=false;}
     else if(t==='语音合成'){badge.textContent=speechConfigured()?'可用·朗读':'需配置';b.classList.toggle('tb-live',speechConfigured());b.disabled=false;}
     else if(t==='视频生成'){badge.textContent=videoConfigured()?'可用·生成':'需配置';b.classList.toggle('tb-live',videoConfigured());b.disabled=false;}
+    else if(t==='测站'||t==='站点体检'){badge.textContent='可用';b.classList.add('tb-live');b.disabled=false;}
     else{
       badge.textContent='未接';b.classList.add('tb-off');b.setAttribute('aria-disabled','true');
     }
@@ -2817,6 +2922,8 @@ document.querySelectorAll('.tb-item,.ctx-toggle').forEach(b=>b.addEventListener(
   if(t==='图像生成'){runImageGenFromComposer();return;}
   if(t==='语音合成'){runTTSFromComposer();return;}
   if(t==='视频生成'){runVideoFromComposer();return;}
+  if(t==='测站'){runProbe('single');return;}
+  if(t==='站点体检'){runProbe('full');return;}
   if(!TOOL_LIVE.has(t) && b.classList.contains('tb-item')){
     toast(TOOL_UNAVAILABLE_HINT[t]||('「'+t+'」未接'));return;
   }
@@ -2842,7 +2949,7 @@ function slashPrefill(cmd,text){
 /* ================= 初始化 ================= */
 function initPrefsUI(){
   applyTheme(DB.prefs.theme);document.body.style.fontSize=DB.prefs.font;
-  fillWebSearchForm();fillImageGenForm();fillSpeechForm();fillVideoForm();
+  fillWebSearchForm();fillImageGenForm();fillSpeechForm();fillVideoForm();fillProbeForm();
   document.querySelectorAll('#p-app .seg').forEach(seg=>{
     [...seg.children].forEach(b=>{
       const oc=b.getAttribute('onclick')||'';
