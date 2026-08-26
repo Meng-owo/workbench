@@ -393,7 +393,14 @@ input,textarea{font-family:inherit;border:none;outline:none;background:none;colo
 .tb-item.on .ic{background:var(--acc);color:var(--cbtn-t);box-shadow:0 4px 12px rgba(193,106,55,.28)}
 .tb-item.on b{color:var(--acc)}
 .tb-item b{font-size:12px;font-weight:500;letter-spacing:0;line-height:1.2;color:var(--ink-2)}
+.tb-item.tb-off{opacity:.48;cursor:not-allowed;position:relative}
+.tb-item.tb-off .ic{filter:grayscale(.4)}
+.tb-item .tb-badge{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.04em;color:var(--faint);margin-top:-4px;line-height:1}
+.tb-item.tb-live .tb-badge{color:var(--acc)}
 .tb-desc{display:none}
+.gen-img-card{border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:8px 0;background:var(--card);max-width:min(100%,420px)}
+.gen-img-card img{display:block;width:100%;height:auto}
+.gen-img-card .gen-img-act{display:flex;gap:6px;padding:8px;border-top:1px solid var(--line)}
 
 /* ============ settings panel ============ */
 .settings{
@@ -796,7 +803,7 @@ body.less-fx *{animation-duration:.01ms!important;animation-iteration-count:1!im
   <div class="sheet" id="toolbox">
     <div class="sheet-grab"><i></i></div>
     <div class="sheet-head">
-      <div><b>工具箱</b><span>点选即挂载到本次对话</span></div>
+      <div><b>工具箱</b><span>已接通可点 · 未接显示角标</span></div>
       <button class="icon-btn" onclick="closeAll()"><svg class="i"><use href="#i-x"/></svg></button>
     </div>
     <div class="sheet-body">
@@ -976,20 +983,29 @@ body.less-fx *{animation-duration:.01ms!important;animation-iteration-count:1!im
             <p style="font-size:12px;color:var(--muted);padding:4px 15px 12px;line-height:1.65">输入区点亮「联网」且已填 key 时，发送前会先向 Tavily 检索，再把摘要注入对话。未配置则只提示去设置，不会装已搜索。<button type="button" class="chip-btn" style="display:inline;padding:2px 8px;margin-left:4px" onclick="testWebSearch()">测试搜索</button></p>
           </div>
         </div>
+        <div class="set-group"><b>图像生成 · OpenAI 兼容</b>
+          <div class="card">
+            <div class="field"><label>Base URL</label><div class="fin"><input id="igBase" placeholder="https://api.openai.com/v1" onchange="saveImageGen()" onblur="saveImageGen()"></div></div>
+            <div class="field"><label>API Key · 仅存本机，导出剥离</label><div class="fin"><input id="igKey" type="password" placeholder="sk-…" onchange="saveImageGen()" onblur="saveImageGen()"></div></div>
+            <div class="field"><label>Model</label><div class="fin"><input id="igModel" placeholder="dall-e-3" onchange="saveImageGen()" onblur="saveImageGen()"></div></div>
+            <div class="field"><label>Size</label><div class="fin"><input id="igSize" placeholder="1024x1024" onchange="saveImageGen()" onblur="saveImageGen()"></div></div>
+            <p style="font-size:12px;color:var(--muted);padding:4px 15px 12px;line-height:1.65">工具箱点「图像生成」：已配置则按输入框文案 <code>POST {base}/images/generations</code> 真出图；未配置只引导来这里。结果在对话里可预览/下载。<button type="button" class="chip-btn" style="display:inline;padding:2px 8px;margin-left:4px" onclick="testImageGen()">测试出图</button></p>
+          </div>
+        </div>
         <div class="set-group"><b>平台能力</b>
           <div class="card">
             <div class="row"><span class="ric ic-blue"><svg class="i i-s"><use href="#i-globe"/></svg></span><span class="rt"><b>联网搜索</b><span>工具开关镜像 · 真源见上方</span></span><span class="badge badge-ok">输入区</span></div>
-            <div class="row"><span class="ric ic-green"><svg class="i i-s"><use href="#i-terminal"/></svg></span><span class="rt"><b>终端与文件系统</b><span>iSH Linux 沙箱</span></span><button class="tgl on" onclick="tg(this)"></button></div>
-            <div class="row"><span class="ric ic-yellow"><svg class="i i-s"><use href="#i-music"/></svg></span><span class="rt"><b>音乐播放</b><span>网易云登录态 · 无损</span></span><button class="tgl on" onclick="tg(this)"></button></div>
-            <div class="row"><span class="ric ic-red"><svg class="i i-s"><use href="#i-clock"/></svg></span><span class="rt"><b>定时任务</b><span>Shortcuts 自动化唤起</span></span><button class="tgl on" onclick="tg(this)"></button></div>
+            <div class="row"><span class="ric ic-green"><svg class="i i-s"><use href="#i-terminal"/></svg></span><span class="rt"><b>终端与文件系统</b><span>网页端未接 · 需网关/Minis</span></span><span class="badge">未接</span></div>
+            <div class="row"><span class="ric ic-yellow"><svg class="i i-s"><use href="#i-music"/></svg></span><span class="rt"><b>音乐播放</b><span>网页端未接 · 规划 REAL-4</span></span><span class="badge">未接</span></div>
+            <div class="row"><span class="ric ic-red"><svg class="i i-s"><use href="#i-clock"/></svg></span><span class="rt"><b>定时任务</b><span>走 iOS Shortcuts / Minis</span></span><span class="badge">未接</span></div>
           </div>
         </div>
         <div class="set-group"><b>桥接</b>
           <div class="card">
-            <div class="row"><span class="ric ic-blue"><svg class="i i-s"><use href="#i-branch"/></svg></span><span class="rt"><b>QQ 桥接</b><span>同一身份多端应答</span></span><button class="tgl on" onclick="tg(this)"></button></div>
-            <div class="row"><span class="ric ic-red"><svg class="i i-s"><use href="#i-heart"/></svg></span><span class="rt"><b>玩具桥</b><span>BLE 直连控制链路</span></span><button class="tgl" onclick="tg(this)"></button></div>
-            <div class="row"><span class="ric ic-green"><svg class="i i-s"><use href="#i-sync"/></svg></span><span class="rt"><b>节点订阅同步</b><span>双源合并 · 死节点剔除</span></span><button class="tgl on" onclick="tg(this)"></button></div>
-            <div class="row"><span class="ric ic-yellow"><svg class="i i-s"><use href="#i-shield"/></svg></span><span class="rt"><b>接入站自动安检</b><span>新增 key 先扫毒再使用</span></span><button class="tgl on" onclick="tg(this)"></button></div>
+            <div class="row"><span class="ric ic-blue"><svg class="i i-s"><use href="#i-branch"/></svg></span><span class="rt"><b>QQ 桥接</b><span>网页端未接</span></span><span class="badge">未接</span></div>
+            <div class="row"><span class="ric ic-red"><svg class="i i-s"><use href="#i-heart"/></svg></span><span class="rt"><b>玩具桥</b><span>网页端未接 · Minis/BLE</span></span><span class="badge">未接</span></div>
+            <div class="row"><span class="ric ic-green"><svg class="i i-s"><use href="#i-sync"/></svg></span><span class="rt"><b>节点订阅同步</b><span>网页端未接</span></span><span class="badge">未接</span></div>
+            <div class="row"><span class="ric ic-yellow"><svg class="i i-s"><use href="#i-shield"/></svg></span><span class="rt"><b>接入站自动安检</b><span>网页端未接</span></span><span class="badge">未接</span></div>
           </div>
         </div>
         <div class="set-group"><b>隐私边界</b>
@@ -1131,7 +1147,8 @@ function defaults(){return{
          sandboxOpen:false,sandboxHide:false},
   defModel:null,           // {pid,mid}
   mem:[],                  // {id,text,createdAt} 长期记忆
-  webSearch:{provider:'tavily',endpoint:'https://api.tavily.com/search',key:''}
+  webSearch:{provider:'tavily',endpoint:'https://api.tavily.com/search',key:''},
+  imageGen:{base:'',key:'',model:'dall-e-3',size:'1024x1024'}
 };}
 let DB=null;
 function loadDB(){
@@ -1158,7 +1175,7 @@ let _focusBack=null;
 function openSheet(n){
   try{_focusBack=document.activeElement;}catch(e){_focusBack=null;}
   closePanels();$(n).classList.add('open');if(window.innerWidth<900)$('scrim').classList.add('on');
-  if(n==='settings')fillWebSearchForm();
+  if(n==='settings'){fillWebSearchForm();fillImageGenForm();}
   setTimeout(()=>{const root=$(n);if(!root)return;const f=root.querySelector('input:not([type=hidden]),textarea,button.icon-btn,[tabindex]:not([tabindex="-1"])');if(f)try{f.focus();}catch(e){};},30);
 }
 function closePanels(){$('toolbox').classList.remove('open');$('settings').classList.remove('open');$('modelMenu').classList.remove('open');$('avatars').classList.remove('open');$('sessmenu').classList.remove('open');$('memmgr').classList.remove('open');}
@@ -1652,7 +1669,7 @@ function msgAIHTML(m,total){
   return `<div class="msg ai" data-mi="${m.i}">
     <div class="ai-meta"><button class="ai-avatar" style="cursor:pointer;border:none" onclick="openAgentTab()" title="编辑智能体">${curA().av.img?'':''}${esc(curA().av.t)}</button><span class="ai-name">${esc(curA().name)} · ${esc(modelLabel(m.model||currentModelRef()))}</span></div>
     ${think}${m.note?`<p style="color:var(--muted);font-size:12px;margin:4px 0 0;padding-left:30px">${esc(m.note)}</p>`:''}
-    <div class="ai-body"${star}>${err}${m.content?mdLite(m.content):(m.err?'':'<p style="color:var(--muted)">…</p>')}</div>
+    <div class="ai-body"${star}>${err}${m.image?`<div class="gen-img-card"><img src="${m.image}" alt="生成图像"><div class="gen-img-act"><a class="chip-btn" href="${m.image}" download="workbench-image.png" target="_blank" rel="noopener">下载</a><button type="button" class="chip-btn" onclick="navigator.clipboard&&navigator.clipboard.writeText('${m.image.startsWith('http')?m.image:''}')">复制链接</button></div></div>`:''}${m.content?mdLite(m.content):(m.err||m.image?'':'<p style="color:var(--muted)">…</p>')}</div>
     ${act}
   </div>`;
 }
@@ -1861,6 +1878,118 @@ async function testWebSearch(){
     patchStep(sid,{status:'error',summary:(e.message||String(e)).slice(0,120)});
     toast('测试失败：'+(e.message||e));
   }
+}
+
+/* ================= REAL-1 图像生成 · OpenAI 兼容 ================= */
+function ensureImageGen(){
+  if(!DB.imageGen)DB.imageGen={base:'',key:'',model:'dall-e-3',size:'1024x1024'};
+  return DB.imageGen;
+}
+function imageGenConfigured(){
+  const g=ensureImageGen();
+  return !!(g.base&&g.base.trim()&&g.key&&g.key.trim());
+}
+function fillImageGenForm(){
+  const g=ensureImageGen();
+  const b=$('igBase'),k=$('igKey'),m=$('igModel'),s=$('igSize');
+  if(b)b.value=g.base||'';if(k)k.value=g.key||'';if(m)m.value=g.model||'dall-e-3';if(s)s.value=g.size||'1024x1024';
+}
+function saveImageGen(){
+  const g=ensureImageGen();
+  const b=$('igBase'),k=$('igKey'),m=$('igModel'),s=$('igSize');
+  if(b)g.base=(b.value||'').trim().replace(/\/$/,'');
+  if(k)g.key=(k.value||'').trim();
+  if(m)g.model=(m.value||'').trim()||'dall-e-3';
+  if(s)g.size=(s.value||'').trim()||'1024x1024';
+  save();markToolboxHonesty();
+}
+function imageGenEndpoint(){
+  const base=(ensureImageGen().base||'').replace(/\/$/,'');
+  if(!base)return '';
+  if(/\/images\/generations\/?$/.test(base))return base;
+  return base+'/images/generations';
+}
+async function runImageGenFromComposer(){
+  closeAll();
+  const prompt=($('promptBox').value||'').trim();
+  if(!imageGenConfigured()){
+    toast('未配置图像 API · 打开 设置→功能 填写 Base/Key');
+    openSheet('settings');setTab(document.querySelectorAll('.set-tab')[1]||document.querySelectorAll('.set-tab')[0],'p-func');
+    fillImageGenForm();return;
+  }
+  if(!prompt){toast('先在输入框写画面描述，再点图像生成');$('promptBox').focus();return;}
+  if(state.gen)return toast('请等当前生成结束');
+  const s=ensureSession(prompt);
+  s.agentId=curAgent;
+  if(!s.model)s.model=(curA().model||DB.defModel)?JSON.parse(JSON.stringify(curA().model||DB.defModel)):null;
+  s.msgs.push({role:'user',content:'[图像生成] '+prompt});
+  s.updatedAt=Date.now();
+  if(s.msgs.filter(m=>m.role==='user').length===1)s.title=('图·'+prompt).slice(0,22);
+  if(DB.prefs.clearAfter!==false)$('promptBox').value='';autoGrow();
+  showThread();renderThread();renderChatList();save();
+  await doImageGeneration(s,prompt);
+}
+async function testImageGen(){
+  saveImageGen();
+  if(!imageGenConfigured())return toast('先填 Base URL 与 API Key');
+  const s=ensureSession('测试出图');
+  s.msgs.push({role:'user',content:'[图像生成·测试] 一只简笔小猫'});
+  showThread();renderThread();save();
+  await doImageGeneration(s,'A simple cute line-art kitten, white background');
+}
+async function doImageGeneration(s,prompt){
+  const g=ensureImageGen();
+  const url=imageGenEndpoint();
+  const sid=pushStep('图像生成','running',(g.model||'')+' · '+(prompt||'').slice(0,40));
+  const ai={role:'ai',content:'',pending:true,t0:Date.now(),model:{pid:'image',mid:g.model||'image'}};
+  s.msgs.push(ai);renderThread();
+  try{
+    const ctl=new AbortController();state.gen=ctl;setSendBtn(true);renderSandbox();
+    const body={model:g.model||'dall-e-3',prompt:prompt,n:1,size:g.size||'1024x1024'};
+    // b64 便于网页展示，也接受 url
+    body.response_format='b64_json';
+    const r=await fetch(url,{
+      method:'POST',signal:ctl.signal,
+      headers:Object.assign({'Content-Type':'application/json'},g.key?{'Authorization':'Bearer '+g.key}:{}),
+      body:JSON.stringify(body)
+    });
+    const txt=await r.text();
+    if(!r.ok){
+      // 部分上游不认 response_format，重试无该字段
+      if(r.status===400&&/response_format|b64/i.test(txt)){
+        delete body.response_format;
+        const r2=await fetch(url,{method:'POST',signal:ctl.signal,headers:Object.assign({'Content-Type':'application/json'},g.key?{'Authorization':'Bearer '+g.key}:{}),body:JSON.stringify(body)});
+        const t2=await r2.text();
+        if(!r2.ok)throw new Error('HTTP '+r2.status+' · '+t2.slice(0,180));
+        return finishImage(s,ai,sid,t2,prompt);
+      }
+      throw new Error('HTTP '+r.status+' · '+txt.slice(0,180));
+    }
+    return finishImage(s,ai,sid,txt,prompt);
+  }catch(e){
+    if(e.name==='AbortError'){ai.content='(已停止)';patchStep(sid,{status:'stopped',summary:'用户停止'});}
+    else{
+      ai.err=(e.message==='Failed to fetch')?'图像请求发不出去：网络或 CORS。请确认 Base 可被网页访问。':(e.message||String(e));
+      patchStep(sid,{status:'error',summary:String(ai.err).slice(0,160)});
+      toast('出图失败');
+    }
+  }finally{
+    ai.pending=false;state.gen=null;setSendBtn(false);
+    s.updatedAt=Date.now();save();renderThread();renderChatList();renderSandbox();
+  }
+}
+function finishImage(s,ai,sid,txt,prompt){
+  let j;try{j=JSON.parse(txt);}catch(e){throw new Error('返回非 JSON');}
+  const item=(j.data&&j.data[0])||j;
+  let src='';
+  if(item.b64_json)src='data:image/png;base64,'+item.b64_json;
+  else if(item.url)src=item.url;
+  else if(typeof item==='string'&&item.indexOf('http')===0)src=item;
+  if(!src)throw new Error('响应无 image url/b64');
+  ai.image=src;
+  ai.content='已生成图像'+(prompt?('：'+prompt.slice(0,80)):'');
+  patchStep(sid,{status:'done',summary:'ok'});
+  toast('出图完成');
 }
 
 /* ================= 发送主链路 ================= */
@@ -2207,7 +2336,8 @@ function exportData(){
     sessions:DB.sessions,agents:DB.agents,profile:DB.profile,prefs:DB.prefs,mem:DB.mem||[],
     defModel:DB.defModel,
     providers:DB.providers.map(p=>({id:p.id,name:p.name,base:p.base,models:p.models||[],status:p.status||'',key:''})),
-    webSearch:{provider:(DB.webSearch&&DB.webSearch.provider)||'tavily',endpoint:(DB.webSearch&&DB.webSearch.endpoint)||'https://api.tavily.com/search',key:''}
+    webSearch:{provider:(DB.webSearch&&DB.webSearch.provider)||'tavily',endpoint:(DB.webSearch&&DB.webSearch.endpoint)||'https://api.tavily.com/search',key:''},
+    imageGen:{base:(DB.imageGen&&DB.imageGen.base)||'',model:(DB.imageGen&&DB.imageGen.model)||'dall-e-3',size:(DB.imageGen&&DB.imageGen.size)||'1024x1024',key:''}
   };
   const blob=new Blob([JSON.stringify(dump,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='workbench-backup.json';a.click();
@@ -2236,6 +2366,10 @@ function importData(){
         if(raw.webSearch&&typeof raw.webSearch==='object'){
           DB.webSearch=Object.assign({provider:'tavily',endpoint:'https://api.tavily.com/search',key:''},DB.webSearch||{},raw.webSearch);
           if(!raw.webSearch.key||/勿外传|redact|\*+|已剥离/i.test(String(raw.webSearch.key)))DB.webSearch.key='';
+        }
+        if(raw.imageGen&&typeof raw.imageGen==='object'){
+          DB.imageGen=Object.assign({base:'',key:'',model:'dall-e-3',size:'1024x1024'},DB.imageGen||{},raw.imageGen);
+          if(!raw.imageGen.key||/勿外传|redact|\*+|已剥离/i.test(String(raw.imageGen.key)))DB.imageGen.key='';
         }
         if(Array.isArray(raw.providers)){
           DB.providers=raw.providers.map(p=>({
@@ -2347,19 +2481,64 @@ function sandboxClear(){
 }
 
 /* ================= 工具箱 ================= */
-const activeTools=new Set(new Set()); 
-const WEB_ONLY_UNAVAILABLE=new Set(['图像生成','音乐播放','语音合成','视频生成','提醒事项','日历','地图','智能家居','健康数据']);
+const activeTools=new Set();
+/** 网页端可真接的挂载工具（可点亮） */
+const TOOL_LIVE=new Set(['联网搜索','深度思考','长期记忆']);
+/** 点击即行动，不进 activeTools 挂载 */
+const TOOL_ACTION=new Set(['视觉理解','图像生成']);
+/** 其余全部未接 */
+const TOOL_UNAVAILABLE_HINT={
+  '音乐播放':'网页端未接听歌运行时（规划 REAL-4 网关）',
+  '语音合成':'网页端未接 TTS（规划 REAL-2）',
+  '视频生成':'网页端未接视频生成',
+  '提醒事项':'网页端未接 · 请用系统提醒/Minis',
+  '日历':'网页端未接日历',
+  '地图':'网页端未接地图',
+  '智能家居':'网页端未接 HomeKit',
+  '健康数据':'网页端未接 HealthKit',
+  '终端执行':'网页端未接终端（规划 REAL-5 网关）',
+  '浏览器自动化':'网页端未接浏览器自动化',
+  '代码运行':'网页端未接代码执行',
+  '文件处理':'网页端未接文件/PDF 管线',
+  '仓库同步':'网页端未接 git 推送',
+  '站点体检':'网页端未接安检',
+  '测站':'网页端未接测站（规划 REAL-3）',
+  '节点同步':'网页端未接节点同步'
+};
+function markToolboxHonesty(){
+  document.querySelectorAll('.tb-item[data-tool]').forEach(b=>{
+    const t=b.dataset.tool;
+    let badge=b.querySelector('.tb-badge');
+    if(!badge){badge=document.createElement('span');badge.className='tb-badge';b.appendChild(badge);}
+    b.classList.remove('tb-off','tb-live');
+    if(TOOL_LIVE.has(t)){badge.textContent='可用';b.classList.add('tb-live');b.disabled=false;b.removeAttribute('aria-disabled');}
+    else if(t==='图像生成'){badge.textContent=imageGenConfigured()?'可用·出图':'需配置';b.classList.toggle('tb-live',imageGenConfigured());b.disabled=false;}
+    else if(t==='视觉理解'){badge.textContent='选图';b.classList.add('tb-live');b.disabled=false;}
+    else{
+      badge.textContent='未接';b.classList.add('tb-off');b.setAttribute('aria-disabled','true');
+    }
+  });
+}
 function syncBtns(){
   document.querySelectorAll('[data-tool]').forEach(b=>{
     if(b.classList.contains('ctx-toggle')||b.classList.contains('tb-item'))
       b.classList.toggle('on',activeTools.has(b.dataset.tool));
   });
+  markToolboxHonesty();
 }
-document.querySelectorAll('.tb-item,.ctx-toggle').forEach(b=>b.addEventListener('click',()=>{
-  const t=b.dataset.tool;
+document.querySelectorAll('.tb-item,.ctx-toggle').forEach(b=>b.addEventListener('click',e=>{
+  const t=b.dataset.tool;if(!t)return;
+  if(b.classList.contains('tb-item')&&b.classList.contains('tb-off')){
+    e.preventDefault();
+    toast(TOOL_UNAVAILABLE_HINT[t]||('「'+t+'」网页端未接'));
+    return;
+  }
   if(t==='视觉理解'){pickImage();return;}
+  if(t==='图像生成'){runImageGenFromComposer();return;}
+  if(!TOOL_LIVE.has(t) && b.classList.contains('tb-item')){
+    toast(TOOL_UNAVAILABLE_HINT[t]||('「'+t+'」未接'));return;
+  }
   if(activeTools.has(t)){activeTools.delete(t);syncBtns();return;}
-  if(WEB_ONLY_UNAVAILABLE.has(t)&&!b.dataset.warned){toast('「'+t+'」由 Minis 原生端提供，网页端为预留位');b.dataset.warned='1';}
   activeTools.add(t);syncBtns();
 }));
 
@@ -2381,7 +2560,7 @@ function slashPrefill(cmd,text){
 /* ================= 初始化 ================= */
 function initPrefsUI(){
   applyTheme(DB.prefs.theme);document.body.style.fontSize=DB.prefs.font;
-  fillWebSearchForm();
+  fillWebSearchForm();fillImageGenForm();
   document.querySelectorAll('#p-app .seg').forEach(seg=>{
     [...seg.children].forEach(b=>{
       const oc=b.getAttribute('onclick')||'';
@@ -2396,7 +2575,7 @@ function initPrefsUI(){
 (function init(){
   renderAgents();selectAgent(0);renderMyAvPick();applyMyAv();
   renderProviders();renderModelMenu();updateChip();
-  renderChatList();initPrefsUI();syncBtns();renderSandbox();
+  renderChatList();initPrefsUI();syncBtns();markToolboxHonesty();renderSandbox();
   if(DB.sessions.length){const s=[...DB.sessions].sort((a,b)=>b.updatedAt-a.updatedAt)[0];openChatById(s.id);}
   else showWelcome();
 })();
