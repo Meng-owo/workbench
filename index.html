@@ -1024,6 +1024,13 @@ body.less-fx *{animation-duration:.01ms!important;animation-iteration-count:1!im
             <p style="font-size:12px;color:var(--muted);padding:4px 15px 12px;line-height:1.65">工具箱点「听歌」用输入框关键词搜索 → <code>GET {base}/v1/music/search?q=</code>；结果可点播 → <code>GET {base}/v1/music/play?id=</code> 返回音频 url 页内播放。cookie/key 不进前端。</p>
           </div>
         </div>
+        <div class="set-group"><b>文件处理 · 本机 + 可选 PDF 网关</b>
+          <div class="card">
+            <div class="field"><label>PDF 网关 Base URL（可选）</label><div class="fin"><input id="flGwBase" placeholder="留空则 PDF 诚实提示需网关" onchange="saveFiles()" onblur="saveFiles()"></div></div>
+            <div class="field"><label>网关 Token</label><div class="fin"><input id="flGwToken" type="password" placeholder="鉴权 token" onchange="saveFiles()" onblur="saveFiles()"></div></div>
+            <p style="font-size:12px;color:var(--muted);padding:4px 15px 12px;line-height:1.65">工具箱点「文件」选本机文件：文本/Markdown 预览摘要、图片尺寸、CSV 前几行表格化，均在本地完成。PDF 需网关 <code>POST {base}/v1/files/extract</code>，未配网关时如实提示。</p>
+          </div>
+        </div>
         <div class="set-group"><b>测站 · 浏览器直连 + 可选网关</b>
           <div class="card">
             <div class="field"><label>网关 Base URL（可选）</label><div class="fin"><input id="pbGwBase" placeholder="留空走浏览器直连" onchange="saveProbe()" onblur="saveProbe()"></div></div>
@@ -1194,7 +1201,8 @@ function defaults(){return{
   video:{base:'',key:'',model:'',pollMs:5000},
   probe:{gwBase:'',gwToken:'',defaultTargets:''},
   nodes:{gwBase:'',gwToken:''},
-  music:{gwBase:'',gwToken:''}
+  music:{gwBase:'',gwToken:''},
+  files:{gwBase:'',gwToken:''}
 };}
 let DB=null;
 function loadDB(){
@@ -1221,7 +1229,7 @@ let _focusBack=null;
 function openSheet(n){
   try{_focusBack=document.activeElement;}catch(e){_focusBack=null;}
   closePanels();$(n).classList.add('open');if(window.innerWidth<900)$('scrim').classList.add('on');
-  if(n==='settings'){fillWebSearchForm();fillImageGenForm();fillSpeechForm();fillVideoForm();fillProbeForm();fillNodesForm();fillMusicForm();}
+  if(n==='settings'){fillWebSearchForm();fillImageGenForm();fillSpeechForm();fillVideoForm();fillProbeForm();fillNodesForm();fillMusicForm();fillFilesForm();}
   setTimeout(()=>{const root=$(n);if(!root)return;const f=root.querySelector('input:not([type=hidden]),textarea,button.icon-btn,[tabindex]:not([tabindex="-1"])');if(f)try{f.focus();}catch(e){};},30);
 }
 function closePanels(){$('toolbox').classList.remove('open');$('settings').classList.remove('open');$('modelMenu').classList.remove('open');$('avatars').classList.remove('open');$('sessmenu').classList.remove('open');$('memmgr').classList.remove('open');}
@@ -2277,6 +2285,122 @@ async function doVideo(s,prompt){
   }
 }
 
+/* ================= R7 文件处理 · 本机 + PDF 网关 ================= */
+function ensureFiles(){
+  if(!DB.files)DB.files={gwBase:'',gwToken:''};
+  return DB.files;
+}
+function fillFilesForm(){
+  const f=ensureFiles();const b=$('flGwBase'),t=$('flGwToken');
+  if(b)b.value=f.gwBase||'';if(t)t.value=f.gwToken||'';
+}
+function saveFiles(){
+  const f=ensureFiles();const b=$('flGwBase'),t=$('flGwToken');
+  if(b)f.gwBase=(b.value||'').trim().replace(/\/$/,'');if(t)f.gwToken=(t.value||'').trim();save();
+}
+function runFiles(){
+  closeAll();
+  const s=ensureSession('文件处理');
+  s.msgs.push({role:'user',content:'[文件处理] 选择本地文件'});
+  s.updatedAt=Date.now();
+  if(s.msgs.filter(m=>m.role==='user').length===1)s.title='文件处理';
+  showThread();renderThread();renderChatList();save();
+  const sid=pushStep('读取文件','running','等待选择');
+  const inp=document.createElement('input');
+  inp.type='file';
+  inp.onchange=()=>{
+    const file=inp.files&&inp.files[0];
+    if(!file){patchStep(sid,{status:'stopped',summary:'未选择'});return;}
+    patchStep(sid,{status:'running',summary:file.name+' · '+((file.size/1024).toFixed(1))+'KB'});
+    handleFile(s,file,sid);
+  };
+  inp.click();
+}
+function handleFile(s,file,sid){
+  const ai={role:'ai',content:'',pending:true,t0:Date.now(),model:{pid:'files'}};
+  s.msgs.push(ai);renderThread();
+  const isImg=/^image\//.test(file.type);
+  const isCsv=/\.csv$/i.test(file.name)||file.type==='text/csv';
+  const isPdf=/\.pdf$/i.test(file.name)||file.type==='application/pdf';
+  const isText=/^text\//.test(file.type)||/\.(md|txt|log|json|js|ts|py|html|css|xml|yaml|yml)$/i.test(file.name);
+  try{
+    if(isImg){
+      // 图片尺寸（本地）
+      const rd=new FileReader();
+      rd.onload=()=>{
+        const im=new Image();
+        im.onload=()=>{
+          ai.content='**文件：'+esc(file.name)+'**\n\n· 类型：'+file.type+'\n· 尺寸：'+im.naturalWidth+' × '+im.naturalHeight+' px\n· 大小：'+((file.size/1024).toFixed(1))+' KB';
+          patchStep(sid,{status:'done',summary:file.name+' · '+im.naturalWidth+'×'+im.naturalHeight});
+          ai.pending=false;s.updatedAt=Date.now();save();renderThread();renderChatList();renderSandbox();
+        };
+        im.onerror=()=>{ai.err='图片读取失败';patchStep(sid,{status:'error',summary:'图解析失败'});ai.pending=false;renderThread();};
+        im.src=rd.result;
+      };
+      rd.readAsDataURL(file);
+      return;
+    }
+    if(isCsv||isText){
+      const rd=new FileReader();
+      rd.onload=()=>{
+        const txt=String(rd.result||'');
+        const head=file.name;
+        let body='';
+        if(isCsv){
+          const rows=txt.split(/\r?\n/).filter(Boolean).slice(0,6);
+          if(rows.length){
+            body='\n| '+rows.map(r=>r.split(/[,\t]/).join(' | ')).join(' |\n| ')+' |';
+          }
+        }else{
+          body='\n```\n'+txt.slice(0,1200)+(txt.length>1200?'\n…(截断)':'')+'\n```';
+        }
+        ai.content='**文件：'+esc(file.name)+'**\n\n· 类型：'+file.type+'\n· 大小：'+((file.size/1024).toFixed(1))+' KB\n\n'+body;
+        patchStep(sid,{status:'done',summary:file.name+' · '+(isCsv?'CSV 前几行':'文本预览')});
+        ai.pending=false;s.updatedAt=Date.now();save();renderThread();renderChatList();renderSandbox();
+      };
+      rd.readAsText(file);
+      return;
+    }
+    if(isPdf){
+      const f=ensureFiles();
+      if(!(f.gwBase&&f.gwBase.trim())){
+        ai.content='**文件：'+esc(file.name)+'**\n\nPDF 提取需要网关。设置 → 功能 → 文件处理 填 PDF 网关 Base/Token 后重试。';
+        patchStep(sid,{status:'done',summary:'PDF · 需网关'});
+      }else{
+        const rd=new FileReader();
+        rd.onload=async()=>{
+          try{
+            const r=await fetch(f.gwBase+'/v1/files/extract',{
+              method:'POST',
+              headers:Object.assign({'Content-Type':'application/json'},f.gwToken?{'Authorization':'Bearer '+f.gwToken}:{}),
+              body:JSON.stringify({name:file.name,b64:String(rd.result).split(',')[1]||''})
+            });
+            if(!r.ok){const t=await r.text().catch(()=>'');throw new Error('HTTP '+r.status+(t?' · '+t.slice(0,120):''));}
+            const j=await r.json();
+            const text=(j.data&&j.data.text)||j.text||j.content||'';
+            ai.content='**文件：'+esc(file.name)+'**\n\n· 页数：'+(j.data&&j.data.pages||j.pages||'?')+'\n\n```\n'+(text||'').slice(0,1500)+(text.length>1500?'\n…(截断)':'')+'\n```';
+            patchStep(sid,{status:'done',summary:file.name+' · PDF 提取'});
+          }catch(e){
+            ai.err='PDF 提取失败：'+(e.message||String(e));
+            patchStep(sid,{status:'error',summary:String(ai.err).slice(0,160)});
+          }
+          ai.pending=false;s.updatedAt=Date.now();save();renderThread();renderChatList();renderSandbox();
+        };
+        rd.readAsDataURL(file);
+      }
+      return;
+    }
+    // 其他类型
+    ai.content='**文件：'+esc(file.name)+'**\n\n· 类型：'+file.type+'\n· 大小：'+((file.size/1024).toFixed(1))+' KB\n\n（本机暂不支持此格式处理）';
+    patchStep(sid,{status:'done',summary:file.name+' · 已登记'});
+  }catch(e){
+    ai.err='处理失败：'+(e.message||String(e));
+    patchStep(sid,{status:'error',summary:String(ai.err).slice(0,160)});
+  }finally{
+    if(!isImg){ai.pending=false;s.updatedAt=Date.now();save();renderThread();renderChatList();renderSandbox();}
+  }
+}
+
 /* ================= R6 听歌 · 音乐网关 ================= */
 function ensureMusic(){
   if(!DB.music)DB.music={gwBase:'',gwToken:''};
@@ -2899,7 +3023,8 @@ function exportData(){
     video:{base:(DB.video&&DB.video.base)||'',model:(DB.video&&DB.video.model)||'',pollMs:(DB.video&&DB.video.pollMs)||5000,key:''},
     probe:{gwBase:(DB.probe&&DB.probe.gwBase)||'',defaultTargets:(DB.probe&&DB.probe.defaultTargets)||'',gwToken:''},
     nodes:{gwBase:(DB.nodes&&DB.nodes.gwBase)||'',gwToken:''},
-    music:{gwBase:(DB.music&&DB.music.gwBase)||'',gwToken:''}
+    music:{gwBase:(DB.music&&DB.music.gwBase)||'',gwToken:''},
+    files:{gwBase:(DB.files&&DB.files.gwBase)||'',gwToken:''}
   };
   const blob=new Blob([JSON.stringify(dump,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='workbench-backup.json';a.click();
@@ -2952,6 +3077,10 @@ function importData(){
         if(raw.music&&typeof raw.music==='object'){
           DB.music=Object.assign({gwBase:'',gwToken:''},DB.music||{},raw.music);
           if(!raw.music.gwToken||/勿外传|redact|\*+|已剥离/i.test(String(raw.music.gwToken)))DB.music.gwToken='';
+        }
+        if(raw.files&&typeof raw.files==='object'){
+          DB.files=Object.assign({gwBase:'',gwToken:''},DB.files||{},raw.files);
+          if(!raw.files.gwToken||/勿外传|redact|\*+|已剥离/i.test(String(raw.files.gwToken)))DB.files.gwToken='';
         }
         if(Array.isArray(raw.providers)){
           DB.providers=raw.providers.map(p=>({
@@ -3067,7 +3196,7 @@ const activeTools=new Set();
 /** 网页端可真接的挂载工具（可点亮） */
 const TOOL_LIVE=new Set(['联网搜索','深度思考','长期记忆']);
 /** 点击即行动，不进 activeTools 挂载 */
-const TOOL_ACTION=new Set(['视觉理解','图像生成','语音合成','视频生成','测站','站点体检','节点同步','音乐播放']);
+const TOOL_ACTION=new Set(['视觉理解','图像生成','语音合成','视频生成','测站','站点体检','节点同步','音乐播放','文件处理']);
 /** 其余全部未接 */
 const TOOL_UNAVAILABLE_HINT={
   '提醒事项':'网页端未接 · 请用系统提醒/Minis',
@@ -3078,7 +3207,6 @@ const TOOL_UNAVAILABLE_HINT={
   '终端执行':'网页端未接终端（规划 REAL-5 网关）',
   '浏览器自动化':'网页端未接浏览器自动化',
   '代码运行':'网页端未接代码执行',
-  '文件处理':'网页端未接文件/PDF 管线',
   '仓库同步':'网页端未接 git 推送',
 };
 
@@ -3096,6 +3224,7 @@ function markToolboxHonesty(){
     else if(t==='测站'||t==='站点体检'){badge.textContent='可用';b.classList.add('tb-live');b.disabled=false;}
     else if(t==='节点同步'){badge.textContent=nodesConfigured()?'可用':'需配置';b.classList.toggle('tb-live',nodesConfigured());b.disabled=false;}
     else if(t==='音乐播放'){badge.textContent=musicConfigured()?'可用·听歌':'需配置';b.classList.toggle('tb-live',musicConfigured());b.disabled=false;}
+    else if(t==='文件处理'){badge.textContent='可用';b.classList.add('tb-live');b.disabled=false;}
     else{
       badge.textContent='未接';b.classList.add('tb-off');b.setAttribute('aria-disabled','true');
     }
@@ -3127,6 +3256,7 @@ document.querySelectorAll('.tb-item,.ctx-toggle').forEach(b=>b.addEventListener(
   if(t==='站点体检'){runProbe('full');return;}
   if(t==='节点同步'){runNodes();return;}
   if(t==='音乐播放'){runMusic();return;}
+  if(t==='文件处理'){runFiles();return;}
   if(!TOOL_LIVE.has(t) && b.classList.contains('tb-item')){
     toast(TOOL_UNAVAILABLE_HINT[t]||('「'+t+'」未接'));return;
   }
@@ -3152,7 +3282,7 @@ function slashPrefill(cmd,text){
 /* ================= 初始化 ================= */
 function initPrefsUI(){
   applyTheme(DB.prefs.theme);document.body.style.fontSize=DB.prefs.font;
-  fillWebSearchForm();fillImageGenForm();fillSpeechForm();fillVideoForm();fillProbeForm();fillNodesForm();fillMusicForm();
+  fillWebSearchForm();fillImageGenForm();fillSpeechForm();fillVideoForm();fillProbeForm();fillNodesForm();fillMusicForm();fillFilesForm();
   document.querySelectorAll('#p-app .seg').forEach(seg=>{
     [...seg.children].forEach(b=>{
       const oc=b.getAttribute('onclick')||'';
