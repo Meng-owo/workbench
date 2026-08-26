@@ -1074,6 +1074,13 @@ body.less-fx *{animation-duration:.01ms!important;animation-iteration-count:1!im
             <p style="font-size:12px;color:var(--muted);padding:4px 15px 12px;line-height:1.65">工具箱点「地图」用输入框关键词搜地点 <code>GET {base}/v1/maps/search?q=</code> → 名称/地址/坐标列表，点结果用系统地图打开。未配置只引导。</p>
           </div>
         </div>
+        <div class="set-group"><b>家居 + 健康 · Home/Health 网关</b>
+          <div class="card">
+            <div class="field"><label>网关 Base URL</label><div class="fin"><input id="hmGwBase" placeholder="https://your-gw.example" onchange="saveHome()" onblur="saveHome()"></div></div>
+            <div class="field"><label>网关 Token</label><div class="fin"><input id="hmGwToken" type="password" placeholder="鉴权 token" onchange="saveHome()" onblur="saveHome()"></div></div>
+            <p style="font-size:12px;color:var(--muted);padding:4px 15px 12px;line-height:1.65">工具箱「家居」→ <code>GET {base}/v1/home/devices</code>；「健康」→ <code>GET {base}/v1/health/summary</code>。未配置只引导，不装假仪表盘。</p>
+          </div>
+        </div>
         <div class="set-group"><b>测站 · 浏览器直连 + 可选网关</b>
           <div class="card">
             <div class="field"><label>网关 Base URL（可选）</label><div class="fin"><input id="pbGwBase" placeholder="留空走浏览器直连" onchange="saveProbe()" onblur="saveProbe()"></div></div>
@@ -1251,7 +1258,8 @@ function defaults(){return{
   browser:{gwBase:'',gwToken:''},
   git:{gwBase:'',gwToken:''},
   cal:{gwBase:'',gwToken:''},
-  maps:{gwBase:'',gwToken:''}
+  maps:{gwBase:'',gwToken:''},
+  home:{gwBase:'',gwToken:''}
 };}
 let DB=null;
 function loadDB(){
@@ -1278,7 +1286,7 @@ let _focusBack=null;
 function openSheet(n){
   try{_focusBack=document.activeElement;}catch(e){_focusBack=null;}
   closePanels();$(n).classList.add('open');if(window.innerWidth<900)$('scrim').classList.add('on');
-  if(n==='settings'){fillWebSearchForm();fillImageGenForm();fillSpeechForm();fillVideoForm();fillProbeForm();fillNodesForm();fillMusicForm();fillFilesForm();fillCodeForm();fillTermForm();fillBrowserForm();fillGitForm();fillCalForm();fillMapsForm();}
+  if(n==='settings'){fillWebSearchForm();fillImageGenForm();fillSpeechForm();fillVideoForm();fillProbeForm();fillNodesForm();fillMusicForm();fillFilesForm();fillCodeForm();fillTermForm();fillBrowserForm();fillGitForm();fillCalForm();fillMapsForm();fillHomeForm();}
   setTimeout(()=>{const root=$(n);if(!root)return;const f=root.querySelector('input:not([type=hidden]),textarea,button.icon-btn,[tabindex]:not([tabindex="-1"])');if(f)try{f.focus();}catch(e){};},30);
 }
 function closePanels(){$('toolbox').classList.remove('open');$('settings').classList.remove('open');$('modelMenu').classList.remove('open');$('avatars').classList.remove('open');$('sessmenu').classList.remove('open');$('memmgr').classList.remove('open');}
@@ -2328,6 +2336,75 @@ async function doVideo(s,prompt){
       patchStep(sid,{status:'error',summary:String(ai.err).slice(0,160)});
       toast('视频生成失败');
     }
+  }finally{
+    ai.pending=false;state.gen=null;setSendBtn(false);
+    s.updatedAt=Date.now();save();renderThread();renderChatList();renderSandbox();
+  }
+}
+
+/* ================= R14 家居 + 健康 · Home/Health 网关 ================= */
+function ensureHome(){
+  if(!DB.home)DB.home={gwBase:'',gwToken:''};
+  return DB.home;
+}
+function homeConfigured(){
+  const h=ensureHome();return !!(h.gwBase&&h.gwBase.trim()&&h.gwToken&&h.gwToken.trim());
+}
+function fillHomeForm(){
+  const h=ensureHome();const b=$('hmGwBase'),t=$('hmGwToken');
+  if(b)b.value=h.gwBase||'';if(t)t.value=h.gwToken||'';
+}
+function saveHome(){
+  const h=ensureHome();const b=$('hmGwBase'),t=$('hmGwToken');
+  if(b)h.gwBase=(b.value||'').trim().replace(/\/$/,'');if(t)h.gwToken=(t.value||'').trim();save();markToolboxHonesty();
+}
+async function runHome(mode){
+  closeAll();
+  if(!homeConfigured()){
+    toast('未配置 Home/Health 网关 · 打开 设置→功能 填写 Base/Token');
+    openSheet('settings');const tabs=[...document.querySelectorAll('.set-tab')];
+    const ft=tabs.find(t=>(t.getAttribute('onclick')||'').indexOf('p-func')>=0)||tabs[1]||tabs[0];
+    if(ft)setTab(ft,'p-func');fillHomeForm();
+    setTimeout(()=>{const el=$('hmGwBase');if(el)try{el.focus();}catch(e){}},40);return;
+  }
+  const h=ensureHome();
+  const title=mode==='devices'?'家居':'健康';
+  const s=ensureSession(title);
+  s.msgs.push({role:'user',content:'['+title+'] '+(mode==='devices'?'设备列表':'健康摘要')});
+  s.updatedAt=Date.now();
+  if(s.msgs.filter(m=>m.role==='user').length===1)s.title=title;
+  if(DB.prefs.clearAfter!==false)$('promptBox').value='';autoGrow();
+  showThread();renderThread();renderChatList();save();
+  const sid=pushStep('读'+title,'running','');
+  const ai={role:'ai',content:'',pending:true,t0:Date.now(),model:{pid:'home'}};
+  s.msgs.push(ai);renderThread();
+  try{
+    const ctl=new AbortController();state.gen=ctl;setSendBtn(true);renderSandbox();
+    const ep=mode==='devices'?h.gwBase+'/v1/home/devices':h.gwBase+'/v1/health/summary';
+    const r=await fetch(ep,{signal:ctl.signal,headers:h.gwToken?{'Authorization':'Bearer '+h.gwToken}:{}});
+    if(!r.ok){const t=await r.text().catch(()=>'');throw new Error('HTTP '+r.status+(t?' · '+t.slice(0,160):''));}
+    const j=await r.json();
+    const data=j.data||j.items||j;
+    let items=Array.isArray(data)?data:(data.devices||data.metrics||[]);
+    if(!items.length){ai.content='**'+(mode==='devices'?'家居设备':'健康摘要')+'**\n\n（无数据）';patchStep(sid,{status:'done',summary:'0 条'});}
+    else{
+      const lines=['**'+(mode==='devices'?'家居设备':'健康数据')+' · '+(typeof items[0]==='string'?items.length:items.length)+' 项**'];
+      items.slice(0,12).forEach((it,i)=>{
+        if(typeof it==='string')lines.push((i+1)+'. '+esc(it));
+        else{
+          const n=it.name||it.title||it.type||('项 '+(i+1));
+          const v=it.value||it.state||it.val||'';
+          const u=it.unit||'';
+          lines.push((i+1)+'. '+esc(String(n))+(v?'  '+esc(String(v)+u):''));
+        }
+      });
+      ai.content=lines.join('\n');
+      patchStep(sid,{status:'done',summary:items.length+' 项'});
+    }
+    toast('已读取');
+  }catch(e){
+    if(e.name==='AbortError'){ai.content='(已停止)';patchStep(sid,{status:'stopped',summary:'用户停止'});}
+    else{ai.err='读取失败：'+(e.message||String(e));patchStep(sid,{status:'error',summary:String(ai.err).slice(0,160)});toast('读取失败');}
   }finally{
     ai.pending=false;state.gen=null;setSendBtn(false);
     s.updatedAt=Date.now();save();renderThread();renderChatList();renderSandbox();
@@ -3541,7 +3618,8 @@ function exportData(){
     browser:{gwBase:(DB.browser&&DB.browser.gwBase)||'',gwToken:''},
     git:{gwBase:(DB.git&&DB.git.gwBase)||'',gwToken:''},
     cal:{gwBase:(DB.cal&&DB.cal.gwBase)||'',gwToken:''},
-    maps:{gwBase:(DB.maps&&DB.maps.gwBase)||'',gwToken:''}
+    maps:{gwBase:(DB.maps&&DB.maps.gwBase)||'',gwToken:''},
+    home:{gwBase:(DB.home&&DB.home.gwBase)||'',gwToken:''}
   };
   const blob=new Blob([JSON.stringify(dump,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='workbench-backup.json';a.click();
@@ -3622,6 +3700,10 @@ function importData(){
         if(raw.maps&&typeof raw.maps==='object'){
           DB.maps=Object.assign({gwBase:'',gwToken:''},DB.maps||{},raw.maps);
           if(!raw.maps.gwToken||/勿外传|redact|\*+|已剥离/i.test(String(raw.maps.gwToken)))DB.maps.gwToken='';
+        }
+        if(raw.home&&typeof raw.home==='object'){
+          DB.home=Object.assign({gwBase:'',gwToken:''},DB.home||{},raw.home);
+          if(!raw.home.gwToken||/勿外传|redact|\*+|已剥离/i.test(String(raw.home.gwToken)))DB.home.gwToken='';
         }
         if(Array.isArray(raw.providers)){
           DB.providers=raw.providers.map(p=>({
@@ -3737,11 +3819,9 @@ const activeTools=new Set();
 /** 网页端可真接的挂载工具（可点亮） */
 const TOOL_LIVE=new Set(['联网搜索','深度思考','长期记忆']);
 /** 点击即行动，不进 activeTools 挂载 */
-const TOOL_ACTION=new Set(['视觉理解','图像生成','语音合成','视频生成','测站','站点体检','节点同步','音乐播放','文件处理','代码运行','终端执行','浏览器自动化','仓库同步','提醒事项','日历','地图']);
+const TOOL_ACTION=new Set(['视觉理解','图像生成','语音合成','视频生成','测站','站点体检','节点同步','音乐播放','文件处理','代码运行','终端执行','浏览器自动化','仓库同步','提醒事项','日历','地图','智能家居','健康数据']);
 /** 其余全部未接 */
 const TOOL_UNAVAILABLE_HINT={
-  '智能家居':'网页端未接 HomeKit',
-  '健康数据':'网页端未接 HealthKit',
 };
 
 function markToolboxHonesty(){
@@ -3765,6 +3845,7 @@ function markToolboxHonesty(){
     else if(t==='仓库同步'){badge.textContent=gitConfigured()?'可用':'需配置';b.classList.toggle('tb-live',gitConfigured());b.disabled=false;}
     else if(t==='提醒事项'||t==='日历'){badge.textContent=calConfigured()?'可用':'需配置';b.classList.toggle('tb-live',calConfigured());b.disabled=false;}
     else if(t==='地图'){badge.textContent=mapsConfigured()?'可用':'需配置';b.classList.toggle('tb-live',mapsConfigured());b.disabled=false;}
+    else if(t==='智能家居'||t==='健康数据'){badge.textContent=homeConfigured()?'可用':'需配置';b.classList.toggle('tb-live',homeConfigured());b.disabled=false;}
     else{
       badge.textContent='未接';b.classList.add('tb-off');b.setAttribute('aria-disabled','true');
     }
@@ -3804,6 +3885,8 @@ document.querySelectorAll('.tb-item,.ctx-toggle').forEach(b=>b.addEventListener(
   if(t==='提醒事项'){runCal('list');return;}
   if(t==='日历'){runCal('list');return;}
   if(t==='地图'){runMaps();return;}
+  if(t==='智能家居'){runHome('devices');return;}
+  if(t==='健康数据'){runHome('health');return;}
   if(!TOOL_LIVE.has(t) && b.classList.contains('tb-item')){
     toast(TOOL_UNAVAILABLE_HINT[t]||('「'+t+'」未接'));return;
   }
@@ -3829,7 +3912,7 @@ function slashPrefill(cmd,text){
 /* ================= 初始化 ================= */
 function initPrefsUI(){
   applyTheme(DB.prefs.theme);document.body.style.fontSize=DB.prefs.font;
-  fillWebSearchForm();fillImageGenForm();fillSpeechForm();fillVideoForm();fillProbeForm();fillNodesForm();fillMusicForm();fillFilesForm();fillCodeForm();fillTermForm();fillBrowserForm();fillGitForm();fillCalForm();fillMapsForm();
+  fillWebSearchForm();fillImageGenForm();fillSpeechForm();fillVideoForm();fillProbeForm();fillNodesForm();fillMusicForm();fillFilesForm();fillCodeForm();fillTermForm();fillBrowserForm();fillGitForm();fillCalForm();fillMapsForm();fillHomeForm();
   document.querySelectorAll('#p-app .seg').forEach(seg=>{
     [...seg.children].forEach(b=>{
       const oc=b.getAttribute('onclick')||'';
