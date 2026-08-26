@@ -2312,35 +2312,50 @@ async function runProbe(mode){
       });
       if(!r.ok){const t=await r.text().catch(()=>'');throw new Error('网关返回 HTTP '+r.status+(t?' · '+t.slice(0,120):''));}
       const j=await r.json();
-      results=(j.data||j.results||[j]).map(x=>({url:x.url||x.target||'?',ok:x.ok||x.success||x.status<400,ms:x.ms||x.latency||x.time||0,status:x.status||x.code||0,err:x.error||x.message||''}));
+      results=(j.data||j.results||[j]).map(x=>{
+        const st=Number(x.status||x.code||0);
+        const ok=!!(x.ok!==undefined?x.ok:(x.success||(st>=200&&st<400&&st>0)));
+        return {url:x.url||x.target||'?',ok,ms:Number(x.ms||x.latency||x.time||0)||0,status:st,err:x.error||x.message||''};
+      });
     }else{
       results=await Promise.all(targets.map(async url=>{
         const t0=performance.now();
-        let ok=false,status=0,err='';
+        let ok=false,status=0,err='',opaque=false;
         try{
-          const r=await fetch(url,{method:'GET',mode:'no-cors',signal:AbortSignal.timeout(15000)});
-          status=r.status||0;
-          ok=status>=200&&status<500;
+          // 先 cors 尝试拿真实状态码
+          try{
+            const r=await fetch(url,{method:'GET',mode:'cors',signal:AbortSignal.timeout(12000)});
+            status=r.status||0;
+            ok=status>=200&&status<400;
+            if(!ok)err='HTTP '+status;
+          }catch(e1){
+            if(e1.name==='AbortError'||e1.name==='TimeoutError')throw e1;
+            // cors 被挡 → 降级 no-cors 只验连通
+            const r2=await fetch(url,{method:'GET',mode:'no-cors',signal:AbortSignal.timeout(8000)});
+            opaque=r2.type==='opaque'||!r2.status;
+            ok=true; // 能完成请求=已连通（读不到状态码）
+            status=0;err='已连通（该源未允许网页读状态码）';
+          }
         }catch(e){
-          if(e.name==='TimeoutError')err='超时 (>15s)';
-          else if(e.name==='AbortError')err='已停止';
-          else err=e.message==='Failed to fetch'?'CORS 或网络不可达':(e.message||String(e));
-          ok=err.includes('CORS')||!err.includes('超时');
+          if(e.name==='TimeoutError'){err='超时 (>12s)';}
+          else if(e.name==='AbortError'){err='已停止';}
+          else{err=e.message==='Failed to fetch'?'网络不可达或连接被拒':(e.message||String(e));}
+          ok=false;
         }
         const ms=Math.round(performance.now()-t0);
-        return {url,ok,ms,status,err};
+        return {url,ok,ms,status,err,opaque};
       }));
     }
-    // 渲染卡片
-    const lines=results.map((r,i)=>{
-      const icon=r.ok?'✅':(r.err.includes('CORS')?'⚠️':'❌');
+    // 渲染卡片（无 emoji：通/阻/限）
+    const lines=results.map(r=>{
+      const tag=r.ok?'通':(r.opaque?'通·限':(r.status===0?'阻':'阻'));
       const ms=r.ms?r.ms+'ms':'';
-      const st=r.status?' H'+r.status:'';
-      const er=r.err?' '+r.err.slice(0,60):'';
-      return icon+' '+(r.url||'#')+(ms?' · '+ms:'')+st+er;
+      const st=r.status>0?'HTTP '+r.status:'';
+      const er=r.err?r.err.slice(0,80):'';
+      return '['+tag+'] '+ms+(st?' '+st:'')+(er?' '+er:'')+' — '+(r.url||'#');
     }).join('\n');
-    ai.content='## 探测结果\n\n'+lines;
-    patchStep(sid,{status:'done',summary:results.filter(r=>r.ok).length+'/'+results.length+' ok'});
+    ai.content='**探测结果**\n\n'+lines+'\n\n通=连通 · 限=连通但源禁读状态码 · 阻=不可达';
+    patchStep(sid,{status:'done',summary:results.filter(r=>r.ok).length+'/'+results.length+' 通'});
     toast('探测完成');
   }catch(e){
     ai.err='探测失败：'+(e.message||String(e));
