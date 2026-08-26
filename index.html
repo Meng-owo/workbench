@@ -1914,8 +1914,13 @@ async function runImageGenFromComposer(){
   const prompt=($('promptBox').value||'').trim();
   if(!imageGenConfigured()){
     toast('未配置图像 API · 打开 设置→功能 填写 Base/Key');
-    openSheet('settings');setTab(document.querySelectorAll('.set-tab')[1]||document.querySelectorAll('.set-tab')[0],'p-func');
-    fillImageGenForm();return;
+    openSheet('settings');
+    const tabs=[...document.querySelectorAll('.set-tab')];
+    const ft=tabs.find(t=>(t.getAttribute('onclick')||'').indexOf('p-func')>=0)||tabs[1]||tabs[0];
+    if(ft)setTab(ft,'p-func');
+    fillImageGenForm();
+    setTimeout(()=>{const el=$('igBase')||$('igKey');if(el)try{el.focus();}catch(e){}},40);
+    return;
   }
   if(!prompt){toast('先在输入框写画面描述，再点图像生成');$('promptBox').focus();return;}
   if(state.gen)return toast('请等当前生成结束');
@@ -2186,7 +2191,12 @@ function paintAI(ai,light){
     body.parentNode.insertBefore(d,body);
   }
   if(ai.reasoning){const tb=th.querySelector('.think-body');if(tb)tb.textContent=ai.reasoning.slice(-3000);}
-  if(ai.content)body.innerHTML=mdLite(ai.content)+'<span style="display:inline-block;width:7px;height:14px;background:var(--acc);opacity:.55;vertical-align:-2px;animation:none;border-radius:2px"></span>';
+  if(ai.image||ai.content){
+    const img=ai.image?`<div class="gen-img-card"><img src="${ai.image}" alt="生成图像"></div>`:'';
+    const cur=ai.content?mdLite(ai.content):'';
+    const caret=ai.pending?'<span style="display:inline-block;width:7px;height:14px;background:var(--acc);opacity:.55;vertical-align:-2px;animation:none;border-radius:2px"></span>':'';
+    body.innerHTML=img+cur+caret;
+  }
   if(DB.prefs.autoScroll){
     const cv=$('chatView');
     if(cv.scrollHeight-cv.scrollTop-cv.clientHeight<160)cv.scrollTop=cv.scrollHeight;
@@ -2341,7 +2351,7 @@ function exportData(){
   };
   const blob=new Blob([JSON.stringify(dump,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='workbench-backup.json';a.click();
-  setTimeout(()=>URL.revokeObjectURL(a.href),2000);toast('已导出 JSON（API 密钥已剥离，需自行重填）');
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000);toast('已导出 JSON（聊天/搜索/图像密钥均已剥离）');
 }
 function importData(){
   const f=document.createElement('input');f.type='file';f.accept='application/json,.json';
@@ -2520,6 +2530,10 @@ function markToolboxHonesty(){
   });
 }
 function syncBtns(){
+  // 清掉历史误挂的未接工具
+  [...activeTools].forEach(t=>{
+    if(!TOOL_LIVE.has(t))activeTools.delete(t);
+  });
   document.querySelectorAll('[data-tool]').forEach(b=>{
     if(b.classList.contains('ctx-toggle')||b.classList.contains('tb-item'))
       b.classList.toggle('on',activeTools.has(b.dataset.tool));
