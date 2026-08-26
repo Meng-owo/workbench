@@ -629,10 +629,10 @@ body.less-fx *{animation-duration:.01ms!important;animation-iteration-count:1!im
 
     <div class="sb-foot">
       <button class="sb-link" onclick="openMemMgr()"><svg class="i i-s"><use href="#i-brain"/></svg>记忆库<span class="n" id="memBadge">0</span></button>
-      <button class="sb-link" data-toast="技能中心由 Minis 原生端管理"><svg class="i i-s"><use href="#i-box"/></svg>技能中心<span class="n">Minis</span></button>
+      <button class="sb-link" onclick="openBridge('skills')"><svg class="i i-s"><use href="#i-box"/></svg>技能中心<span class="n" id="skillsBadge">—</span></button>
       <button class="sb-link" onclick="openAgentTab()"><svg class="i i-s"><use href="#i-spark"/></svg>智能体<span class="n" id="agentCount">5</span></button>
-      <button class="sb-link" data-toast="MCP 由 Minis 原生端接入"><svg class="i i-s"><use href="#i-server"/></svg>MCP 服务<span class="n">Minis</span></button>
-      <button class="sb-link" data-toast="定时任务走 iOS Shortcuts，网页端为预留"><svg class="i i-s"><use href="#i-clock"/></svg>定时任务<span class="n">SC</span></button>
+      <button class="sb-link" onclick="openBridge('mcp')"><svg class="i i-s"><use href="#i-server"/></svg>MCP 服务<span class="n" id="mcpBadge">—</span></button>
+      <button class="sb-link" onclick="openBridge('cron')"><svg class="i i-s"><use href="#i-clock"/></svg>定时任务<span class="n" id="cronBadge">—</span></button>
       <div class="sb-user">
         <button class="avatar" id="myAv" style="cursor:pointer" onclick="openSheet('avatars')">星</button>
         <div style="flex:1;min-width:0">
@@ -799,7 +799,19 @@ body.less-fx *{animation-duration:.01ms!important;animation-iteration-count:1!im
       </div>
     </div>
 
-<!-- ================= TOOLBOX SHEET ================= -->
+<!-- ================= R15 BRIDGE SHEET ================= -->
+  <div class="sheet" id="bridge">
+    <div class="sheet-grab"><i></i></div>
+    <div class="sheet-head">
+      <div><b id="bridgeTitle">技能中心</b><span id="bridgeSub"></span></div>
+      <button class="icon-btn" onclick="closeAll()"><svg class="i"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="sheet-body">
+      <div id="bridgeList" class="bridge-list" style="display:flex;flex-direction:column;gap:2px"></div>
+    </div>
+  </div>
+
+>
   <div class="sheet" id="toolbox">
     <div class="sheet-grab"><i></i></div>
     <div class="sheet-head">
@@ -933,15 +945,15 @@ body.less-fx *{animation-duration:.01ms!important;animation-iteration-count:1!im
         <div class="set-group">
           <b>扩展接入</b>
           <div class="card">
-            <button class="row" data-toast="技能中心由 Minis 原生端管理，网页端为预留入口">
+            <button class="row" onclick="openBridge('skills')">
               <span class="ric ic-green"><svg class="i i-s"><use href="#i-box"/></svg></span>
-              <span class="rt"><b>技能中心</b><span>可复用的领域指令集</span></span>
-              <span class="badge badge-ok">Minis</span>
+              <span class="rt"><b>技能中心</b><span>配置网关后列出 · 未配「—」</span></span>
+              <span class="badge" id="skillsBadge2">—</span>
             </button>
-            <button class="row" data-toast="MCP 由 Minis 原生端接入，网页端为预留入口">
+            <button class="row" onclick="openBridge('mcp')">
               <span class="ric ic-blue"><svg class="i i-s"><use href="#i-server"/></svg></span>
-              <span class="rt"><b>MCP 服务</b><span>外部工具协议接入</span></span>
-              <span class="badge badge-ok">Minis</span>
+              <span class="rt"><b>MCP 服务</b><span>配置网关后列出 · 未配「—」</span></span>
+              <span class="badge" id="mcpBadge2">—</span>
             </button>
           </div>
         </div>
@@ -1079,6 +1091,13 @@ body.less-fx *{animation-duration:.01ms!important;animation-iteration-count:1!im
             <div class="field"><label>网关 Base URL</label><div class="fin"><input id="hmGwBase" placeholder="https://your-gw.example" onchange="saveHome()" onblur="saveHome()"></div></div>
             <div class="field"><label>网关 Token</label><div class="fin"><input id="hmGwToken" type="password" placeholder="鉴权 token" onchange="saveHome()" onblur="saveHome()"></div></div>
             <p style="font-size:12px;color:var(--muted);padding:4px 15px 12px;line-height:1.65">工具箱「家居」→ <code>GET {base}/v1/home/devices</code>；「健康」→ <code>GET {base}/v1/health/summary</code>。未配置只引导，不装假仪表盘。</p>
+          </div>
+        </div>
+        <div class="set-group"><b>技能 / MCP / 定时 · 桥接网关</b>
+          <div class="card">
+            <div class="field"><label>桥接网关 Base URL（共用）</label><div class="fin"><input id="bgGwBase" placeholder="https://your-bridge.example" onchange="saveBridge()" onblur="saveBridge()"></div></div>
+            <div class="field"><label>网关 Token</label><div class="fin"><input id="bgGwToken" type="password" placeholder="鉴权 token" onchange="saveBridge()" onblur="saveBridge()"></div></div>
+            <p style="font-size:12px;color:var(--muted);padding:4px 15px 12px;line-height:1.65">侧栏/设置点「技能中心」「MCP」「定时任务」→ <code>GET {base}/v1/skills</code>、<code>/v1/mcp/servers</code>、<code>/v1/cron</code>。未配置显示「—」，不装假数字。</p>
           </div>
         </div>
         <div class="set-group"><b>测站 · 浏览器直连 + 可选网关</b>
@@ -1259,7 +1278,8 @@ function defaults(){return{
   git:{gwBase:'',gwToken:''},
   cal:{gwBase:'',gwToken:''},
   maps:{gwBase:'',gwToken:''},
-  home:{gwBase:'',gwToken:''}
+  home:{gwBase:'',gwToken:''},
+  bridge:{gwBase:'',gwToken:''}
 };}
 let DB=null;
 function loadDB(){
@@ -1286,7 +1306,7 @@ let _focusBack=null;
 function openSheet(n){
   try{_focusBack=document.activeElement;}catch(e){_focusBack=null;}
   closePanels();$(n).classList.add('open');if(window.innerWidth<900)$('scrim').classList.add('on');
-  if(n==='settings'){fillWebSearchForm();fillImageGenForm();fillSpeechForm();fillVideoForm();fillProbeForm();fillNodesForm();fillMusicForm();fillFilesForm();fillCodeForm();fillTermForm();fillBrowserForm();fillGitForm();fillCalForm();fillMapsForm();fillHomeForm();}
+  if(n==='settings'){fillWebSearchForm();fillImageGenForm();fillSpeechForm();fillVideoForm();fillProbeForm();fillNodesForm();fillMusicForm();fillFilesForm();fillCodeForm();fillTermForm();fillBrowserForm();fillGitForm();fillCalForm();fillMapsForm();fillHomeForm();fillBridgeForm();}
   setTimeout(()=>{const root=$(n);if(!root)return;const f=root.querySelector('input:not([type=hidden]),textarea,button.icon-btn,[tabindex]:not([tabindex="-1"])');if(f)try{f.focus();}catch(e){};},30);
 }
 function closePanels(){$('toolbox').classList.remove('open');$('settings').classList.remove('open');$('modelMenu').classList.remove('open');$('avatars').classList.remove('open');$('sessmenu').classList.remove('open');$('memmgr').classList.remove('open');}
@@ -2339,6 +2359,70 @@ async function doVideo(s,prompt){
   }finally{
     ai.pending=false;state.gen=null;setSendBtn(false);
     s.updatedAt=Date.now();save();renderThread();renderChatList();renderSandbox();
+  }
+}
+
+/* ================= R15 技能/MCP/定时 · 桥接网关 ================= */
+function ensureBridge(){
+  if(!DB.bridge)DB.bridge={gwBase:'',gwToken:''};
+  return DB.bridge;
+}
+function bridgeConfigured(){
+  const b=ensureBridge();return !!(b.gwBase&&b.gwBase.trim()&&b.gwToken&&b.gwToken.trim());
+}
+function fillBridgeForm(){
+  const b=ensureBridge();const g=$('bgGwBase'),t=$('bgGwToken');
+  if(g)g.value=b.gwBase||'';if(t)t.value=b.gwToken||'';
+}
+function saveBridge(){
+  const b=ensureBridge();const g=$('bgGwBase'),t=$('bgGwToken');
+  if(g)b.gwBase=(g.value||'').trim().replace(/\/$/,'');if(t)b.gwToken=(t.value||'').trim();save();
+}
+const BRIDGE_META={
+  skills:{title:'技能中心',path:'/v1/skills',itemKey:['name','title'],descKey:['desc','description'],badges:['skillsBadge','skillsBadge2']},
+  mcp:{title:'MCP 服务',path:'/v1/mcp/servers',itemKey:['name','id'],descKey:['desc','description','type'],badges:['mcpBadge','mcpBadge2']},
+  cron:{title:'定时任务',path:'/v1/cron',itemKey:['name','id','task'],descKey:['desc','schedule','cron'],badges:['cronBadge','cronBadge2']}
+};
+function bridgeBadge(kind,n){
+  const m=BRIDGE_META[kind];if(!m)return;
+  m.badges.forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=String(n);});
+}
+async function openBridge(kind){
+  closeAll();
+  const m=BRIDGE_META[kind];if(!m)return;
+  const title=$('bridgeTitle'),sub=$('bridgeSub');
+  if(title)title.textContent=m.title;
+  if(sub)sub.textContent=bridgeConfigured()?'从网关读取':'未配置 · 显示「—」';
+  openSheet('bridge');
+  if(!bridgeConfigured()){
+    const list=$('bridgeList');if(list)list.innerHTML='<div class="sbx-empty" style="padding:14px 6px;font-size:13px;color:var(--muted);line-height:1.6">未配置桥接网关。到 设置→功能→技能/MCP/定时 填 Base/Token 后刷新。</div>';
+    bridgeBadge(kind,'—');return;
+  }
+  const b=ensureBridge();
+  const sid=pushStep('读'+m.title,'running','');
+  try{
+    const r=await fetch(b.gwBase+m.path,{headers:b.gwToken?{'Authorization':'Bearer '+b.gwToken}:{}});
+    if(!r.ok){const t=await r.text().catch(()=>'');throw new Error('HTTP '+r.status+(t?' · '+t.slice(0,120):''));}
+    const j=await r.json();
+    const items=j.data||j.items||j.list||j.tasks||j.servers||j.skills||[];
+    const list=$('bridgeList');if(!list)return;
+    if(!items.length){
+      list.innerHTML='<div class="sbx-empty" style="padding:14px 6px">（暂无'+m.title+'）</div>';
+      bridgeBadge(kind,0);
+    }else{
+      const arr=Array.isArray(items)?items:Object.keys(items).map(k=>Object.assign({name:k},items[k]));
+      list.innerHTML=arr.slice(0,30).map((it,i)=>{
+        const name=(m.itemKey.map(k=>it[k]).find(v=>v!==undefined)||it.name||('项 '+(i+1)));
+        const desc=(m.descKey.map(k=>it[k]).find(v=>v!==undefined)||'');
+        return `<div class="row" style="cursor:default"><span class="ric ic-green"><svg class="i i-s"><use href="#i-box"/></svg></span><span class="rt"><b>${esc(String(name))}</b>${desc?`<span>${esc(String(desc)).slice(0,80)}</span>`:''}</span></div>`;
+      }).join('');
+      bridgeBadge(kind,arr.length);
+    }
+    patchStep(sid,{status:'done',summary:Array.isArray(items)?items.length+' 项':'已读'});
+  }catch(e){
+    const list=$('bridgeList');if(list)list.innerHTML='<div class="sbx-empty" style="padding:14px 6px">读取失败：'+esc(String(e.message||e).slice(0,120))+'</div>';
+    bridgeBadge(kind,'—');
+    patchStep(sid,{status:'error',summary:String(e.message||e).slice(0,120)});
   }
 }
 
@@ -3619,7 +3703,8 @@ function exportData(){
     git:{gwBase:(DB.git&&DB.git.gwBase)||'',gwToken:''},
     cal:{gwBase:(DB.cal&&DB.cal.gwBase)||'',gwToken:''},
     maps:{gwBase:(DB.maps&&DB.maps.gwBase)||'',gwToken:''},
-    home:{gwBase:(DB.home&&DB.home.gwBase)||'',gwToken:''}
+    home:{gwBase:(DB.home&&DB.home.gwBase)||'',gwToken:''},
+    bridge:{gwBase:(DB.bridge&&DB.bridge.gwBase)||'',gwToken:''}
   };
   const blob=new Blob([JSON.stringify(dump,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='workbench-backup.json';a.click();
@@ -3704,6 +3789,10 @@ function importData(){
         if(raw.home&&typeof raw.home==='object'){
           DB.home=Object.assign({gwBase:'',gwToken:''},DB.home||{},raw.home);
           if(!raw.home.gwToken||/勿外传|redact|\*+|已剥离/i.test(String(raw.home.gwToken)))DB.home.gwToken='';
+        }
+        if(raw.bridge&&typeof raw.bridge==='object'){
+          DB.bridge=Object.assign({gwBase:'',gwToken:''},DB.bridge||{},raw.bridge);
+          if(!raw.bridge.gwToken||/勿外传|redact|\*+|已剥离/i.test(String(raw.bridge.gwToken)))DB.bridge.gwToken='';
         }
         if(Array.isArray(raw.providers)){
           DB.providers=raw.providers.map(p=>({
@@ -3912,7 +4001,7 @@ function slashPrefill(cmd,text){
 /* ================= 初始化 ================= */
 function initPrefsUI(){
   applyTheme(DB.prefs.theme);document.body.style.fontSize=DB.prefs.font;
-  fillWebSearchForm();fillImageGenForm();fillSpeechForm();fillVideoForm();fillProbeForm();fillNodesForm();fillMusicForm();fillFilesForm();fillCodeForm();fillTermForm();fillBrowserForm();fillGitForm();fillCalForm();fillMapsForm();fillHomeForm();
+  fillWebSearchForm();fillImageGenForm();fillSpeechForm();fillVideoForm();fillProbeForm();fillNodesForm();fillMusicForm();fillFilesForm();fillCodeForm();fillTermForm();fillBrowserForm();fillGitForm();fillCalForm();fillMapsForm();fillHomeForm();fillBridgeForm();
   document.querySelectorAll('#p-app .seg').forEach(seg=>{
     [...seg.children].forEach(b=>{
       const oc=b.getAttribute('onclick')||'';
