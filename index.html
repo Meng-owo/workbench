@@ -1060,6 +1060,13 @@ body.less-fx *{animation-duration:.01ms!important;animation-iteration-count:1!im
             <p style="font-size:12px;color:var(--muted);padding:4px 15px 12px;line-height:1.65">工具箱点「仓库」查状态 <code>GET {base}/v1/git/status</code>（branch/dirty/ahead/behind/last_commit），随后可点同步 <code>POST {base}/v1/git/sync</code>。不写死任何 PAT。</p>
           </div>
         </div>
+        <div class="set-group"><b>提醒 + 日历 · 日程网关</b>
+          <div class="card">
+            <div class="field"><label>网关 Base URL</label><div class="fin"><input id="clGwBase" placeholder="https://your-gw.example" onchange="saveCal()" onblur="saveCal()"></div></div>
+            <div class="field"><label>网关 Token</label><div class="fin"><input id="clGwToken" type="password" placeholder="鉴权 token" onchange="saveCal()" onblur="saveCal()"></div></div>
+            <p style="font-size:12px;color:var(--muted);padding:4px 15px 12px;line-height:1.65">工具箱「提醒」「日历」共用日程网关：<code>GET {base}/v1/calendar/list</code> 列近 7 天，<code>POST {base}/v1/calendar/add</code> 添加（body: title/start/remind）。网关可接 CalDAV/Apple 桥/自建存储。未配置只引导，不装假列表。</p>
+          </div>
+        </div>
         <div class="set-group"><b>测站 · 浏览器直连 + 可选网关</b>
           <div class="card">
             <div class="field"><label>网关 Base URL（可选）</label><div class="fin"><input id="pbGwBase" placeholder="留空走浏览器直连" onchange="saveProbe()" onblur="saveProbe()"></div></div>
@@ -1235,7 +1242,8 @@ function defaults(){return{
   code:{gwBase:'',gwToken:'',lang:'python'},
   term:{gwBase:'',gwToken:''},
   browser:{gwBase:'',gwToken:''},
-  git:{gwBase:'',gwToken:''}
+  git:{gwBase:'',gwToken:''},
+  cal:{gwBase:'',gwToken:''}
 };}
 let DB=null;
 function loadDB(){
@@ -1262,7 +1270,7 @@ let _focusBack=null;
 function openSheet(n){
   try{_focusBack=document.activeElement;}catch(e){_focusBack=null;}
   closePanels();$(n).classList.add('open');if(window.innerWidth<900)$('scrim').classList.add('on');
-  if(n==='settings'){fillWebSearchForm();fillImageGenForm();fillSpeechForm();fillVideoForm();fillProbeForm();fillNodesForm();fillMusicForm();fillFilesForm();fillCodeForm();fillTermForm();fillBrowserForm();fillGitForm();}
+  if(n==='settings'){fillWebSearchForm();fillImageGenForm();fillSpeechForm();fillVideoForm();fillProbeForm();fillNodesForm();fillMusicForm();fillFilesForm();fillCodeForm();fillTermForm();fillBrowserForm();fillGitForm();fillCalForm();}
   setTimeout(()=>{const root=$(n);if(!root)return;const f=root.querySelector('input:not([type=hidden]),textarea,button.icon-btn,[tabindex]:not([tabindex="-1"])');if(f)try{f.focus();}catch(e){};},30);
 }
 function closePanels(){$('toolbox').classList.remove('open');$('settings').classList.remove('open');$('modelMenu').classList.remove('open');$('avatars').classList.remove('open');$('sessmenu').classList.remove('open');$('memmgr').classList.remove('open');}
@@ -1756,7 +1764,7 @@ function msgAIHTML(m,total){
   return `<div class="msg ai" data-mi="${m.i}">
     <div class="ai-meta"><button class="ai-avatar" style="cursor:pointer;border:none" onclick="openAgentTab()" title="编辑智能体">${curA().av.img?'':''}${esc(curA().av.t)}</button><span class="ai-name">${esc(curA().name)} · ${esc(modelLabel(m.model||currentModelRef()))}</span></div>
     ${think}${m.note?`<p style="color:var(--muted);font-size:12px;margin:4px 0 0;padding-left:30px">${esc(m.note)}</p>`:''}
-    <div class="ai-body"${star}>${err}${m.image?`<div class="gen-img-card"><img src="${m.image}" alt="生成图像"><div class="gen-img-act"><a class="chip-btn" href="${m.image}" download="workbench-image.png" target="_blank" rel="noopener">下载</a><button type="button" class="chip-btn" onclick="navigator.clipboard&&navigator.clipboard.writeText('${m.image.startsWith('http')?m.image:''}')">复制链接</button></div></div>`:''}${m.audio?`<div class="gen-img-card"><audio controls src="${m.audio}" style="width:100%;display:block" preload="auto"></audio><div class="gen-img-act"><a class="chip-btn" href="${m.audio}" download="workbench-tts.mp3">下载 mp3</a></div></div>`:''}${m.video?`<div class="gen-img-card"><video controls src="${m.video}" style="width:100%;display:block;border-radius:8px" preload="metadata"></video><div class="gen-img-act"><a class="chip-btn" href="${m.video}" download="workbench-video.mp4" target="_blank" rel="noopener">下载视频</a></div></div>`:''}${m.nowPlaying?`<div class="gen-img-card"><audio controls autoplay src="${m.nowPlaying}" style="width:100%;display:block" preload="auto"></audio></div>`:''}${m.shot?`<div class="gen-img-card"><img src="${m.shot}" alt="浏览器截图" style="width:100%;display:block"></div>`:''}${m.musicList?`<div class="music-list" style="display:flex;flex-direction:column;gap:2px">${m.musicList.map((it,i)=>`<button type="button" class="row" style="text-align:left;border:none;background:transparent;padding:7px 4px;border-radius:8px" onclick="playMusic(${i})"><svg class="i i-s" style="color:var(--faint)"><use href="#i-play"/></svg><span class="rt" style="margin:0"><b>${esc(it.title)}</b>${it.artist?`<span> · ${esc(it.artist)}</span>`:''}</span></button>`).join('')}</div>`:''}${m.gitInfo?`<div class="gen-img-act" style="border:none;padding:0;margin-top:6px"><button type="button" class="chip-btn" onclick="gitSync()"><svg class="i i-xs"><use href="#i-sync"/></svg>同步推送</button></div>`:''}${m.content?mdLite(m.content):(m.err||m.image||m.audio||m.video||m.musicList||m.nowPlaying?'':'<p style="color:var(--muted)">…</p>')}</div>
+    <div class="ai-body"${star}>${err}${m.image?`<div class="gen-img-card"><img src="${m.image}" alt="生成图像"><div class="gen-img-act"><a class="chip-btn" href="${m.image}" download="workbench-image.png" target="_blank" rel="noopener">下载</a><button type="button" class="chip-btn" onclick="navigator.clipboard&&navigator.clipboard.writeText('${m.image.startsWith('http')?m.image:''}')">复制链接</button></div></div>`:''}${m.audio?`<div class="gen-img-card"><audio controls src="${m.audio}" style="width:100%;display:block" preload="auto"></audio><div class="gen-img-act"><a class="chip-btn" href="${m.audio}" download="workbench-tts.mp3">下载 mp3</a></div></div>`:''}${m.video?`<div class="gen-img-card"><video controls src="${m.video}" style="width:100%;display:block;border-radius:8px" preload="metadata"></video><div class="gen-img-act"><a class="chip-btn" href="${m.video}" download="workbench-video.mp4" target="_blank" rel="noopener">下载视频</a></div></div>`:''}${m.nowPlaying?`<div class="gen-img-card"><audio controls autoplay src="${m.nowPlaying}" style="width:100%;display:block" preload="auto"></audio></div>`:''}${m.shot?`<div class="gen-img-card"><img src="${m.shot}" alt="浏览器截图" style="width:100%;display:block"></div>`:''}${m.musicList?`<div class="music-list" style="display:flex;flex-direction:column;gap:2px">${m.musicList.map((it,i)=>`<button type="button" class="row" style="text-align:left;border:none;background:transparent;padding:7px 4px;border-radius:8px" onclick="playMusic(${i})"><svg class="i i-s" style="color:var(--faint)"><use href="#i-play"/></svg><span class="rt" style="margin:0"><b>${esc(it.title)}</b>${it.artist?`<span> · ${esc(it.artist)}</span>`:''}</span></button>`).join('')}</div>`:''}${m.gitInfo?`<div class="gen-img-act" style="border:none;padding:0;margin-top:6px"><button type="button" class="chip-btn" onclick="gitSync()"><svg class="i i-xs"><use href="#i-sync"/></svg>同步推送</button></div>`:''}${m.calList?`<div class="gen-img-act" style="border:none;padding:0;margin-top:6px"><button type="button" class="chip-btn" onclick="calAdd()"><svg class="i i-xs"><use href="#i-plus"/></svg>在输入框写事件后点此添加</button></div>`:''}${m.content?mdLite(m.content):(m.err||m.image||m.audio||m.video||m.musicList||m.nowPlaying?'':'<p style="color:var(--muted)">…</p>')}</div>
     ${act}
   </div>`;
 }
@@ -2314,6 +2322,96 @@ async function doVideo(s,prompt){
     }
   }finally{
     ai.pending=false;state.gen=null;setSendBtn(false);
+    s.updatedAt=Date.now();save();renderThread();renderChatList();renderSandbox();
+  }
+}
+
+/* ================= R12 提醒 + 日历 · 日程网关 ================= */
+function ensureCal(){
+  if(!DB.cal)DB.cal={gwBase:'',gwToken:''};
+  return DB.cal;
+}
+function calConfigured(){
+  const c=ensureCal();return !!(c.gwBase&&c.gwBase.trim()&&c.gwToken&&c.gwToken.trim());
+}
+function fillCalForm(){
+  const c=ensureCal();const b=$('clGwBase'),t=$('clGwToken');
+  if(b)b.value=c.gwBase||'';if(t)t.value=c.gwToken||'';
+}
+function saveCal(){
+  const c=ensureCal();const b=$('clGwBase'),t=$('clGwToken');
+  if(b)c.gwBase=(b.value||'').trim().replace(/\/$/,'');if(t)c.gwToken=(t.value||'').trim();save();markToolboxHonesty();
+}
+async function runCal(mode){
+  closeAll();
+  if(!calConfigured()){
+    toast('未配置日程网关 · 打开 设置→功能 填写 Base/Token');
+    openSheet('settings');const tabs=[...document.querySelectorAll('.set-tab')];
+    const ft=tabs.find(t=>(t.getAttribute('onclick')||'').indexOf('p-func')>=0)||tabs[1]||tabs[0];
+    if(ft)setTab(ft,'p-func');fillCalForm();
+    setTimeout(()=>{const el=$('clGwBase');if(el)try{el.focus();}catch(e){}},40);return;
+  }
+  const c=ensureCal();
+  const title=mode==='list'?'日程':'提醒';
+  const s=ensureSession(title);
+  s.msgs.push({role:'user',content:'['+title+'] '+(mode==='list'?'查看近 7 天':'查看')});
+  s.updatedAt=Date.now();
+  if(s.msgs.filter(m=>m.role==='user').length===1)s.title=title;
+  if(DB.prefs.clearAfter!==false)$('promptBox').value='';autoGrow();
+  showThread();renderThread();renderChatList();save();
+  const sid=pushStep('读日程','running','');
+  const ai={role:'ai',content:'',pending:true,t0:Date.now(),model:{pid:'cal'}};
+  s.msgs.push(ai);renderThread();
+  try{
+    const ctl=new AbortController();state.gen=ctl;setSendBtn(true);renderSandbox();
+    const r=await fetch(c.gwBase+'/v1/calendar/list',{signal:ctl.signal,headers:c.gwToken?{'Authorization':'Bearer '+c.gwToken}:{}});
+    if(!r.ok){const t=await r.text().catch(()=>'');throw new Error('HTTP '+r.status+(t?' · '+t.slice(0,160):''));}
+    const j=await r.json();
+    const items=j.data||j.events||j.items||[];
+    if(!items.length){ai.content='**'+(mode==='list'?'近 7 天日程':'提醒')+'**\n\n（暂无事件）';patchStep(sid,{status:'done',summary:'0 条'});}
+    else{
+      const lines=['**'+(mode==='list'?'近 7 天日程':'提醒')+' · '+items.length+' 条**'];
+      items.slice(0,15).forEach((it,i)=>{
+        const t=it.title||it.summary||it.text||('事件 '+(i+1));
+        const start=it.start||it.time||it.due||'';
+        const remind=it.remind?' · 提醒':'';
+        lines.push((i+1)+'. '+esc(String(t))+(start?'  '+esc(String(start).slice(0,24)):'')+remind);
+      });
+      ai.content=lines.join('\n');ai.calList=true;
+      patchStep(sid,{status:'done',summary:items.length+' 条'});
+    }
+    toast('日程已读');
+  }catch(e){
+    if(e.name==='AbortError'){ai.content='(已停止)';patchStep(sid,{status:'stopped',summary:'用户停止'});}
+    else{ai.err='读取失败：'+(e.message||String(e));patchStep(sid,{status:'error',summary:String(ai.err).slice(0,160)});toast('读取失败');}
+  }finally{
+    ai.pending=false;state.gen=null;setSendBtn(false);
+    s.updatedAt=Date.now();save();renderThread();renderChatList();renderSandbox();
+  }
+}
+async function calAdd(){
+  const c=ensureCal();if(!calConfigured())return toast('未配置日程网关');
+  const s=curSession();if(!s)return;
+  const input=$('promptBox').value.trim();
+  if(!input)return toast('在输入框写事件，如：明早 9 点开会');
+  const sid=pushStep('添加日程','running',input.slice(0,40));
+  try{
+    const ctl=new AbortController();state.gen=ctl;setSendBtn(true);
+    const r=await fetch(c.gwBase+'/v1/calendar/add',{method:'POST',signal:ctl.signal,headers:Object.assign({'Content-Type':'application/json'},c.gwToken?{'Authorization':'Bearer '+c.gwToken}:{}),body:JSON.stringify({title:input,start:'',remind:true})});
+    if(!r.ok){const t=await r.text().catch(()=>'');throw new Error('HTTP '+r.status+(t?' · '+t.slice(0,160):''));}
+    const j=await r.json();
+    const msg=(j.data&&(j.data.message||j.data.id))||j.message||'已添加';
+    s.msgs.push({role:'user',content:'[添加日程] '+input});
+    s.msgs.push({role:'ai',content:'**已添加**：'+esc(String(msg).slice(0,120)),pending:false,model:{pid:'cal'}});
+    s.updatedAt=Date.now();
+    if(DB.prefs.clearAfter!==false)$('promptBox').value='';autoGrow();
+    patchStep(sid,{status:'done',summary:String(msg).slice(0,60)});
+    toast('已添加');
+  }catch(e){
+    patchStep(sid,{status:'error',summary:String(e.message||e).slice(0,160)});
+    toast('添加失败');
+  }finally{
+    state.gen=null;setSendBtn(false);
     s.updatedAt=Date.now();save();renderThread();renderChatList();renderSandbox();
   }
 }
@@ -3354,7 +3452,8 @@ function exportData(){
     code:{gwBase:(DB.code&&DB.code.gwBase)||'',lang:(DB.code&&DB.code.lang)||'python',gwToken:''},
     term:{gwBase:(DB.term&&DB.term.gwBase)||'',gwToken:''},
     browser:{gwBase:(DB.browser&&DB.browser.gwBase)||'',gwToken:''},
-    git:{gwBase:(DB.git&&DB.git.gwBase)||'',gwToken:''}
+    git:{gwBase:(DB.git&&DB.git.gwBase)||'',gwToken:''},
+    cal:{gwBase:(DB.cal&&DB.cal.gwBase)||'',gwToken:''}
   };
   const blob=new Blob([JSON.stringify(dump,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='workbench-backup.json';a.click();
@@ -3427,6 +3526,10 @@ function importData(){
         if(raw.git&&typeof raw.git==='object'){
           DB.git=Object.assign({gwBase:'',gwToken:''},DB.git||{},raw.git);
           if(!raw.git.gwToken||/勿外传|redact|\*+|已剥离/i.test(String(raw.git.gwToken)))DB.git.gwToken='';
+        }
+        if(raw.cal&&typeof raw.cal==='object'){
+          DB.cal=Object.assign({gwBase:'',gwToken:''},DB.cal||{},raw.cal);
+          if(!raw.cal.gwToken||/勿外传|redact|\*+|已剥离/i.test(String(raw.cal.gwToken)))DB.cal.gwToken='';
         }
         if(Array.isArray(raw.providers)){
           DB.providers=raw.providers.map(p=>({
@@ -3542,11 +3645,9 @@ const activeTools=new Set();
 /** 网页端可真接的挂载工具（可点亮） */
 const TOOL_LIVE=new Set(['联网搜索','深度思考','长期记忆']);
 /** 点击即行动，不进 activeTools 挂载 */
-const TOOL_ACTION=new Set(['视觉理解','图像生成','语音合成','视频生成','测站','站点体检','节点同步','音乐播放','文件处理','代码运行','终端执行','浏览器自动化','仓库同步']);
+const TOOL_ACTION=new Set(['视觉理解','图像生成','语音合成','视频生成','测站','站点体检','节点同步','音乐播放','文件处理','代码运行','终端执行','浏览器自动化','仓库同步','提醒事项','日历']);
 /** 其余全部未接 */
 const TOOL_UNAVAILABLE_HINT={
-  '提醒事项':'网页端未接 · 请用系统提醒/Minis',
-  '日历':'网页端未接日历',
   '地图':'网页端未接地图',
   '智能家居':'网页端未接 HomeKit',
   '健康数据':'网页端未接 HealthKit',
@@ -3571,6 +3672,7 @@ function markToolboxHonesty(){
     else if(t==='终端执行'){badge.textContent=termConfigured()?'可用·执行':'需配置';b.classList.toggle('tb-live',termConfigured());b.disabled=false;}
     else if(t==='浏览器自动化'){badge.textContent=browserConfigured()?'可用·任务':'需配置';b.classList.toggle('tb-live',browserConfigured());b.disabled=false;}
     else if(t==='仓库同步'){badge.textContent=gitConfigured()?'可用':'需配置';b.classList.toggle('tb-live',gitConfigured());b.disabled=false;}
+    else if(t==='提醒事项'||t==='日历'){badge.textContent=calConfigured()?'可用':'需配置';b.classList.toggle('tb-live',calConfigured());b.disabled=false;}
     else{
       badge.textContent='未接';b.classList.add('tb-off');b.setAttribute('aria-disabled','true');
     }
@@ -3607,6 +3709,8 @@ document.querySelectorAll('.tb-item,.ctx-toggle').forEach(b=>b.addEventListener(
   if(t==='终端执行'){runTerm();return;}
   if(t==='浏览器自动化'){runBrowser();return;}
   if(t==='仓库同步'){runGit();return;}
+  if(t==='提醒事项'){runCal('list');return;}
+  if(t==='日历'){runCal('list');return;}
   if(!TOOL_LIVE.has(t) && b.classList.contains('tb-item')){
     toast(TOOL_UNAVAILABLE_HINT[t]||('「'+t+'」未接'));return;
   }
@@ -3632,7 +3736,7 @@ function slashPrefill(cmd,text){
 /* ================= 初始化 ================= */
 function initPrefsUI(){
   applyTheme(DB.prefs.theme);document.body.style.fontSize=DB.prefs.font;
-  fillWebSearchForm();fillImageGenForm();fillSpeechForm();fillVideoForm();fillProbeForm();fillNodesForm();fillMusicForm();fillFilesForm();fillCodeForm();fillTermForm();fillBrowserForm();fillGitForm();
+  fillWebSearchForm();fillImageGenForm();fillSpeechForm();fillVideoForm();fillProbeForm();fillNodesForm();fillMusicForm();fillFilesForm();fillCodeForm();fillTermForm();fillBrowserForm();fillGitForm();fillCalForm();
   document.querySelectorAll('#p-app .seg').forEach(seg=>{
     [...seg.children].forEach(b=>{
       const oc=b.getAttribute('onclick')||'';
