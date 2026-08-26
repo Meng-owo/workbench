@@ -178,7 +178,7 @@ input,textarea{font-family:inherit;border:none;outline:none;background:none;colo
 /* ============ chat ============ */
 .chat-scroll{flex:1;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#DDD transparent;min-width:0}
 .thread{max-width:720px;width:100%;margin:0 auto;padding:26px 18px 30px;display:flex;flex-direction:column;gap:26px;min-width:0;box-sizing:border-box}
-.msg{display:flex;flex-direction:column;animation:rise .7s var(--ease) both;min-width:0;max-width:100%}
+.msg{display:flex;flex-direction:column;animation:rise .7s var(--ease) forwards;min-width:0;max-width:100%}
 @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 .msg.user{align-items:flex-end}
 .bubble-user{
@@ -268,21 +268,21 @@ input,textarea{font-family:inherit;border:none;outline:none;background:none;colo
 .lossless-tag{font-family:var(--mono);font-size:9px;letter-spacing:.08em;border:1px solid var(--line);border-radius:4px;padding:1px 5px;color:var(--muted);vertical-align:2px;margin-left:6px}
 
 /* ============ welcome ============ */
-.welcome{max-width:720px;margin:0 auto;padding:9vh 22px 30px;display:flex;flex-direction:column;gap:30px;animation:rise .8s var(--ease) both}
-.wl-eyebrow{display:inline-flex;align-self:flex-start;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.2em;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:5px 11px;background:var(--surface)}
-.wl-title{font-family:var(--serif);font-size:clamp(34px,8vw,46px);font-weight:400;letter-spacing:-.03em;line-height:1.12}
+.welcome{max-width:720px;margin:0 auto;padding:9vh 22px 30px;display:flex;flex-direction:column;gap:30px;opacity:1;animation:rise .8s var(--ease) forwards}
+.wl-eyebrow{opacity:1;display:inline-flex;align-self:flex-start;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.2em;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:5px 11px;background:var(--surface)}
+.wl-title{opacity:1;font-family:var(--serif);font-size:clamp(34px,8vw,46px);font-weight:400;letter-spacing:-.03em;line-height:1.12}
 .wl-title em{font-style:italic}
-.wl-sub{color:var(--muted);font-size:14.5px;max-width:420px}
+.wl-sub{opacity:1;color:var(--muted);font-size:14.5px;max-width:420px}
 .wl-grid{display:grid;grid-template-columns:1fr;gap:10px}
 .wl-grid .wl-card{animation-delay:calc(var(--index,0)*80ms + 200ms)}
-.wl-eyebrow{animation:rise .7s var(--ease) both}
-.wl-title{animation:rise .7s var(--ease) both;animation-delay:70ms}
-.wl-sub{animation:rise .7s var(--ease) both;animation-delay:130ms}
+.wl-eyebrow{animation:rise .7s var(--ease) forwards}
+.wl-title{animation:rise .7s var(--ease) forwards;animation-delay:70ms}
+.wl-sub{animation:rise .7s var(--ease) forwards;animation-delay:130ms}
 .wl-card{
   border:1px solid var(--line);border-radius:16px;background:var(--surface);
   padding:14px 16px;text-align:left;display:flex;flex-direction:row;align-items:center;gap:15px;
   transition:box-shadow .25s,transform .25s var(--ease);
-  animation:rise .7s var(--ease) both;
+  animation:rise .7s var(--ease) forwards;
 }
 .wl-card:hover{box-shadow:0 2px 12px rgba(0,0,0,.05);transform:translateY(-1px)}
 .wl-card .ic{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex:none}
@@ -421,7 +421,7 @@ input,textarea{font-family:inherit;border:none;outline:none;background:none;colo
 .set-tab{padding:9px 13px;font-size:13px;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;transition:.2s}
 .set-tab.active{color:var(--ink);border-color:var(--ink);font-weight:500}
 .set-body{flex:1;overflow-y:auto;padding:18px 16px calc(30px + env(safe-area-inset-bottom));scrollbar-width:thin}
-.set-page{display:none;flex-direction:column;gap:18px;animation:rise .45s var(--ease) both}
+.set-page{display:none;flex-direction:column;gap:18px;animation:rise .45s var(--ease) forwards}
 .set-page.active{display:flex}
 .set-group>b{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--faint);display:block;padding:0 4px 8px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
@@ -552,6 +552,13 @@ body.less-fx *{animation-duration:.01ms!important;animation-iteration-count:1!im
 .cline{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin:6px 0;max-width:100%;min-width:0}
 .cline .lnos{padding:8px 6px 8px 8px;text-align:right;color:var(--faint);font-size:12px;line-height:1.55;font-family:var(--mono);background:var(--wash);user-select:none;border-right:1px solid var(--line);min-width:30px}
 .cline pre{margin:0;padding:8px 10px;overflow-x:auto;font-size:12.5px;line-height:1.55;flex:1;min-width:0;max-width:100%}
+
+/* UX-1b: welcome must never stay invisible if animation stalls */
+.welcome,.wl-eyebrow,.wl-title,.wl-sub,.wl-card{opacity:1}
+@media (prefers-reduced-motion:reduce){
+  .welcome,.wl-eyebrow,.wl-title,.wl-sub,.wl-card,.msg{animation:none!important}
+}
+
 </style>
 </head>
 <body>
@@ -1727,7 +1734,7 @@ function sessDel(){
 $('smName').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();saveRename();}});
 function newChat(){stopGen(true);state.curId=null;closeAll();syncChatSurface();renderChatList();}
 function showWelcome(){
-  $('chatView').style.display='none';$('welcomeView').style.display='block';updateChip();refreshMetaNames();
+  $('chatView').style.display='none';$('welcomeView').style.display='block';try{$('welcomeView').scrollTop=0;}catch(e){}updateChip();refreshMetaNames();
   const tip=$('welcomeProvTip');const tx=$('welcomeProvTipText');
   if(tip){
     const need=(!DB.providers.length||!currentModelRef());
