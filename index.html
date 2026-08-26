@@ -1669,7 +1669,7 @@ function msgAIHTML(m,total){
   return `<div class="msg ai" data-mi="${m.i}">
     <div class="ai-meta"><button class="ai-avatar" style="cursor:pointer;border:none" onclick="openAgentTab()" title="编辑智能体">${curA().av.img?'':''}${esc(curA().av.t)}</button><span class="ai-name">${esc(curA().name)} · ${esc(modelLabel(m.model||currentModelRef()))}</span></div>
     ${think}${m.note?`<p style="color:var(--muted);font-size:12px;margin:4px 0 0;padding-left:30px">${esc(m.note)}</p>`:''}
-    <div class="ai-body"${star}>${err}${m.image?`<div class="gen-img-card"><img src="${m.image}" alt="生成图像"><div class="gen-img-act"><a class="chip-btn" href="${m.image}" download="workbench-image.png" target="_blank" rel="noopener">下载</a><button type="button" class="chip-btn" onclick="navigator.clipboard&&navigator.clipboard.writeText('${m.image.startsWith('http')?m.image:''}')">复制链接</button></div></div>`:''}${m.content?mdLite(m.content):(m.err||m.image?'':'<p style="color:var(--muted)">…</p>')}</div>
+    <div class="ai-body"${star}>${err}${m.image?`<div class="gen-img-card"><img src="${m.image}" alt="生成图像"><div class="gen-img-act"><a class="chip-btn" href="${m.image}" download="workbench-image.png" target="_blank" rel="noopener">下载</a><button type="button" class="chip-btn" onclick="navigator.clipboard&&navigator.clipboard.writeText('${m.image.startsWith('http')?m.image:''}')">复制链接</button></div></div>`:''}${m.audio?`<div class="gen-img-card"><audio controls src="${m.audio}" style="width:100%;display:block" preload="auto"></audio><div class="gen-img-act"><a class="chip-btn" href="${m.audio}" download="workbench-tts.mp3">下载 mp3</a></div></div>`:''}${m.content?mdLite(m.content):(m.err||m.image||m.audio?'':'<p style="color:var(--muted)">…</p>')}</div>
     ${act}
   </div>`;
 }
@@ -2193,9 +2193,10 @@ function paintAI(ai,light){
   if(ai.reasoning){const tb=th.querySelector('.think-body');if(tb)tb.textContent=ai.reasoning.slice(-3000);}
   if(ai.image||ai.content){
     const img=ai.image?`<div class="gen-img-card"><img src="${ai.image}" alt="生成图像"></div>`:'';
+    const aud=ai.audio?`<div class="gen-img-card"><audio controls src="${ai.audio}" style="width:100%;display:block" preload="auto"></audio></div>`:'';
     const cur=ai.content?mdLite(ai.content):'';
     const caret=ai.pending?'<span style="display:inline-block;width:7px;height:14px;background:var(--acc);opacity:.55;vertical-align:-2px;animation:none;border-radius:2px"></span>':'';
-    body.innerHTML=img+cur+caret;
+    body.innerHTML=img+aud+cur+caret;
   }
   if(DB.prefs.autoScroll){
     const cv=$('chatView');
