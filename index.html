@@ -559,6 +559,31 @@ body.less-fx *{animation-duration:.01ms!important;animation-iteration-count:1!im
   .welcome,.wl-eyebrow,.wl-title,.wl-sub,.wl-card,.msg{animation:none!important}
 }
 
+
+/* UX-2a: settings group fold */
+.set-group{margin:0 0 10px}
+.set-group > .set-fold-h{
+  width:100%;display:flex;align-items:center;gap:8px;text-align:left;
+  padding:10px 12px;border:1px solid var(--line);border-radius:12px;
+  background:var(--surface);color:var(--ink);cursor:pointer;
+  font:inherit;transition:background .15s,border-color .15s;
+}
+.set-group > .set-fold-h:active{transform:scale(.995)}
+.set-group > .set-fold-h b{font-size:13.5px;font-weight:600;letter-spacing:-.01em;flex:1;min-width:0}
+.set-group > .set-fold-h .set-fold-meta{
+  font-family:var(--mono);font-size:10px;color:var(--faint);flex:none;max-width:42%;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.set-group > .set-fold-h .set-fold-meta.on{color:var(--acc)}
+.set-group > .set-fold-h .set-fold-chev{
+  width:16px;height:16px;color:var(--faint);flex:none;
+  transition:transform .25s var(--ease);transform:rotate(90deg);
+}
+.set-group:not(.open) > .set-fold-h .set-fold-chev{transform:rotate(0deg)}
+.set-group > .set-fold-body{display:none;padding-top:8px}
+.set-group.open > .set-fold-body{display:block}
+.set-group.open > .set-fold-h{border-color:var(--line);background:var(--surface-2,var(--surface))}
+
 </style>
 </head>
 <body>
@@ -911,9 +936,7 @@ body.less-fx *{animation-duration:.01ms!important;animation-iteration-count:1!im
 
       <!-- model -->
       <div class="set-page active" id="p-model">
-        <div class="set-group">
-          <b>默认模型</b>
-          <div class="card">
+        <div class="set-group" data-fold="1" data-title="默认模型"><button type="button" class="set-fold-h" onclick="toggleSetGroup(this)" aria-expanded="false"><b>默认模型</b><span class="set-fold-meta" data-fold-meta>—</span><svg class="i set-fold-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></button><div class="set-fold-body"><div class="card">
             <button class="row" onclick="closeAll();toggleMenu(event)" >
               <span class="ric ic-blue"><svg class="i i-s"><use href="#i-spark"/></svg></span>
               <span class="rt"><b id="defRowName">未设置</b><span>点开顶部模型菜单选默认</span></span>
@@ -934,12 +957,9 @@ body.less-fx *{animation-duration:.01ms!important;animation-iteration-count:1!im
               <span class="rt"><b>思维链展示</b><span>折叠显示 reasoning 过程</span></span>
               <button class="tgl on" data-pref="showThink" onclick="tg(this)"></button>
             </div>
-          </div>
-        </div>
+          </div></div></div>
 
-        <div class="set-group">
-          <b>API 服务商</b>
-          <div class="card">
+        <div class="set-group" data-fold="1" data-title="API 服务商"><button type="button" class="set-fold-h" onclick="toggleSetGroup(this)" aria-expanded="false"><b>API 服务商</b><span class="set-fold-meta" data-fold-meta>—</span><svg class="i set-fold-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></button><div class="set-fold-body"><div class="card">
 <div id="provRows"></div>
           </div>
           <button class="btn-dark" style="margin-top:10px;width:100%;justify-content:center" onclick="showApiForm()">
@@ -950,12 +970,9 @@ body.less-fx *{animation-duration:.01ms!important;animation-iteration-count:1!im
             <div class="field"><label>Base URL</label><div class="fin"><input id="pvBase" placeholder="https://example.com/v1"></div></div>
             <div class="field"><label>API Key · 仅存本机，不进云端</label><div class="fin"><input id="pvKey" type="password" placeholder="sk-••••••••••••"></div></div>
             <button class="btn-dark" style="margin:12px 15px;width:calc(100% - 30px);justify-content:center" onclick="saveProvider()">保存并测试连通性</button>
-          </div>
-        </div>
+          </div></div></div>
 
-        <div class="set-group">
-          <b>扩展接入</b>
-          <div class="card">
+        <div class="set-group" data-fold="1" data-title="扩展接入"><button type="button" class="set-fold-h" onclick="toggleSetGroup(this)" aria-expanded="false"><b>扩展接入</b><span class="set-fold-meta" data-fold-meta>—</span><svg class="i set-fold-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></button><div class="set-fold-body"><div class="card">
             <button class="row" onclick="openBridge('skills')">
               <span class="ric ic-green"><svg class="i i-s"><use href="#i-box"/></svg></span>
               <span class="rt"><b>技能中心</b><span>配置网关后列出 · 未配「—」</span></span>
@@ -966,153 +983,115 @@ body.less-fx *{animation-duration:.01ms!important;animation-iteration-count:1!im
               <span class="rt"><b>MCP 服务</b><span>配置网关后列出 · 未配「—」</span></span>
               <span class="badge" id="mcpBadge2">—</span>
             </button>
-          </div>
-        </div>
+          </div></div></div>
       </div>
 
       <!-- chat -->
       <div class="set-page" id="p-chat">
-        <div class="set-group"><b>行为</b>
-          <div class="card">
+        <div class="set-group" data-fold="1" data-title="行为"><button type="button" class="set-fold-h" onclick="toggleSetGroup(this)" aria-expanded="false"><b>行为</b><span class="set-fold-meta" data-fold-meta>—</span><svg class="i set-fold-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></button><div class="set-fold-body"><div class="card">
             <div class="row"><span class="rt"><b>自动滚动到底部</b><span>新内容到达时跟随</span></span><button class="tgl on" data-pref="autoScroll" onclick="tg(this)"></button></div>
             <div class="row"><span class="rt"><b>发送后清空输入框</b><span>&nbsp;</span></span><button class="tgl on" data-pref="clearAfter" onclick="tg(this)"></button></div>
             <div class="row"><span class="rt"><b>回复后主动追问</b><span>网页端未接，点了也不会生效</span></span><button class="tgl" onclick="toast('预留：网页端不会改模型行为')"></button></div>
             <div class="row"><span class="rt"><b>临时对话</b><span>网页端未接，对话仍会写入本机</span></span><button class="tgl" onclick="toast('预留：当前版本无法开临时会话')"></button></div>
-          </div>
-        </div>
-        <div class="set-group"><b>输出长度上限</b>
-          <div class="card"><div class="field" style="border:none">
+          </div></div></div>
+        <div class="set-group" data-fold="1" data-title="输出长度上限"><button type="button" class="set-fold-h" onclick="toggleSetGroup(this)" aria-expanded="false"><b>输出长度上限</b><span class="set-fold-meta" data-fold-meta>—</span><svg class="i set-fold-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></button><div class="set-fold-body"><div class="card"><div class="field" style="border:none">
             <div class="slider-row" style="padding:2px 0">
               <input type="range" min="256" max="32768" value="8192" step="256" oninput="this.parentNode.querySelector('.slider-val').textContent=this.value">
               <span class="slider-val">8192</span>
             </div>
-          </div></div>
-        </div>
-        <div class="set-group"><b>快捷指令</b>
-          <div class="card">
+          </div></div></div></div>
+        <div class="set-group" data-fold="1" data-title="快捷指令"><button type="button" class="set-fold-h" onclick="toggleSetGroup(this)" aria-expanded="false"><b>快捷指令</b><span class="set-fold-meta" data-fold-meta>—</span><svg class="i set-fold-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></button><div class="set-fold-body"><div class="card">
             <button type="button" class="row" onclick="slashPrefill('/巡检','帮我巡检全部链路，按五点出延迟与健康报告')"><span class="rt"><b>/巡检</b><span>点按填入输入框 · 未接独立引擎</span></span><svg class="i i-s" style="color:var(--faint)"><use href="#i-chev-r"/></svg></button>
             <button type="button" class="row" onclick="slashPrefill('/放歌','放首歌吧，按心情选，盯时长换曲')"><span class="rt"><b>/放歌</b><span>点按填入输入框 · 未接独立引擎</span></span><svg class="i i-s" style="color:var(--faint)"><use href="#i-chev-r"/></svg></button>
             <button type="button" class="row" onclick="slashPrefill('/推送','改动过审后推 GitHub 并回查远端')"><span class="rt"><b>/推送</b><span>点按填入输入框 · 未接独立引擎</span></span><svg class="i i-s" style="color:var(--faint)"><use href="#i-chev-r"/></svg></button>
-          </div>
-        </div>
+          </div></div></div>
       </div>
 
       <!-- func -->
       <div class="set-page" id="p-func">
-        <div class="set-group"><b>联网搜索源 · Tavily</b>
-          <div class="card">
+        <div class="set-group" data-fold="1" data-title="联网搜索源 · Tavily"><button type="button" class="set-fold-h" onclick="toggleSetGroup(this)" aria-expanded="false"><b>联网搜索源 · Tavily</b><span class="set-fold-meta" data-fold-meta>—</span><svg class="i set-fold-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></button><div class="set-fold-body"><div class="card">
             <div class="field"><label>API Key · 仅存本机，导出时剥离</label><div class="fin"><input id="wsKey" type="password" placeholder="tvly-… 或你的 Tavily key" onchange="saveWebSearch()" onblur="saveWebSearch()"></div></div>
             <div class="field"><label>Endpoint</label><div class="fin"><input id="wsEndpoint" placeholder="https://api.tavily.com/search" onchange="saveWebSearch()" onblur="saveWebSearch()"></div></div>
             <p style="font-size:12px;color:var(--muted);padding:4px 15px 12px;line-height:1.65">输入区点亮「联网」且已填 key 时，发送前会先向 Tavily 检索，再把摘要注入对话。未配置则只提示去设置，不会装已搜索。<button type="button" class="chip-btn" style="display:inline;padding:2px 8px;margin-left:4px" onclick="testWebSearch()">测试搜索</button></p>
-          </div>
-        </div>
-        <div class="set-group"><b>图像生成 · OpenAI 兼容</b>
-          <div class="card">
+          </div></div></div>
+        <div class="set-group" data-fold="1" data-title="图像生成 · OpenAI 兼容"><button type="button" class="set-fold-h" onclick="toggleSetGroup(this)" aria-expanded="false"><b>图像生成 · OpenAI 兼容</b><span class="set-fold-meta" data-fold-meta>—</span><svg class="i set-fold-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></button><div class="set-fold-body"><div class="card">
             <div class="field"><label>Base URL</label><div class="fin"><input id="igBase" placeholder="https://api.openai.com/v1" onchange="saveImageGen()" onblur="saveImageGen()"></div></div>
             <div class="field"><label>API Key · 仅存本机，导出剥离</label><div class="fin"><input id="igKey" type="password" placeholder="sk-…" onchange="saveImageGen()" onblur="saveImageGen()"></div></div>
             <div class="field"><label>Model</label><div class="fin"><input id="igModel" placeholder="dall-e-3" onchange="saveImageGen()" onblur="saveImageGen()"></div></div>
             <div class="field"><label>Size</label><div class="fin"><input id="igSize" placeholder="1024x1024" onchange="saveImageGen()" onblur="saveImageGen()"></div></div>
             <p style="font-size:12px;color:var(--muted);padding:4px 15px 12px;line-height:1.65">工具箱点「图像生成」：已配置则按输入框文案 <code>POST {base}/images/generations</code> 真出图；未配置只引导来这里。结果在对话里可预览/下载。<button type="button" class="chip-btn" style="display:inline;padding:2px 8px;margin-left:4px" onclick="testImageGen()">测试出图</button></p>
-          </div>
-        </div>
-        <div class="set-group"><b>语音合成 · OpenAI 兼容</b>
-          <div class="card">
+          </div></div></div>
+        <div class="set-group" data-fold="1" data-title="语音合成 · OpenAI 兼容"><button type="button" class="set-fold-h" onclick="toggleSetGroup(this)" aria-expanded="false"><b>语音合成 · OpenAI 兼容</b><span class="set-fold-meta" data-fold-meta>—</span><svg class="i set-fold-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></button><div class="set-fold-body"><div class="card">
             <div class="field"><label>Base URL</label><div class="fin"><input id="spBase" placeholder="https://api.openai.com/v1" onchange="saveSpeech()" onblur="saveSpeech()"></div></div>
             <div class="field"><label>API Key · 仅存本机，导出剥离</label><div class="fin"><input id="spKey" type="password" placeholder="sk-…" onchange="saveSpeech()" onblur="saveSpeech()"></div></div>
             <div class="field"><label>Model</label><div class="fin"><input id="spModel" placeholder="tts-1" onchange="saveSpeech()" onblur="saveSpeech()"></div></div>
             <div class="field"><label>Voice</label><div class="fin"><input id="spVoice" placeholder="alloy" onchange="saveSpeech()" onblur="saveSpeech()"></div></div>
             <p style="font-size:12px;color:var(--muted);padding:4px 15px 12px;line-height:1.65">工具箱点「语音合成」：读输入框文本 <code>POST {base}/audio/speech</code> 生成 mp3，可播放/下载。未配置只引导。<button type="button" class="chip-btn" style="display:inline;padding:2px 8px;margin-left:4px" onclick="testSpeech()">测试朗读</button></p>
-          </div>
-        </div>
-        <div class="set-group"><b>视频生成 · 提交+轮询协议</b>
-          <div class="card">
+          </div></div></div>
+        <div class="set-group" data-fold="1" data-title="视频生成 · 提交+轮询协议"><button type="button" class="set-fold-h" onclick="toggleSetGroup(this)" aria-expanded="false"><b>视频生成 · 提交+轮询协议</b><span class="set-fold-meta" data-fold-meta>—</span><svg class="i set-fold-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></button><div class="set-fold-body"><div class="card">
             <div class="field"><label>Base URL</label><div class="fin"><input id="vdBase" placeholder="https://api.example.com/v1" onchange="saveVideo()" onblur="saveVideo()"></div></div>
             <div class="field"><label>API Key · 仅存本机，导出剥离</label><div class="fin"><input id="vdKey" type="password" placeholder="sk-…" onchange="saveVideo()" onblur="saveVideo()"></div></div>
             <div class="field"><label>Model（可选，按上游填）</label><div class="fin"><input id="vdModel" placeholder="留空用上游默认" onchange="saveVideo()" onblur="saveVideo()"></div></div>
             <div class="field"><label>轮询间隔 ms</label><div class="fin"><input id="vdPoll" type="number" placeholder="5000" onchange="saveVideo()" onblur="saveVideo()"></div></div>
             <p style="font-size:12px;color:var(--muted);padding:4px 15px 12px;line-height:1.65">协议（写死）：<code>POST {base}/videos/generations</code> 提交（body: model/prompt），立即带 url 则直取；否则 <code>GET {base}/videos/{id}</code> 按间隔轮询到 done/failed。结果页内可播+下载。未配置只引导。<button type="button" class="chip-btn" style="display:inline;padding:2px 8px;margin-left:4px" onclick="testVideo()">测试生成</button></p>
-          </div>
-        </div>
-        <div class="set-group"><b>节点同步 · 网关</b>
-          <div class="card">
+          </div></div></div>
+        <div class="set-group" data-fold="1" data-title="节点同步 · 网关"><button type="button" class="set-fold-h" onclick="toggleSetGroup(this)" aria-expanded="false"><b>节点同步 · 网关</b><span class="set-fold-meta" data-fold-meta>—</span><svg class="i set-fold-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></button><div class="set-fold-body"><div class="card">
             <div class="field"><label>网关 Base URL</label><div class="fin"><input id="ndGwBase" placeholder="https://your-gw.example" onchange="saveNodes()" onblur="saveNodes()"></div></div>
             <div class="field"><label>网关 Token</label><div class="fin"><input id="ndGwToken" type="password" placeholder="鉴权 token" onchange="saveNodes()" onblur="saveNodes()"></div></div>
             <p style="font-size:12px;color:var(--muted);padding:4px 15px 12px;line-height:1.65">工具箱点「节点」时 <code>POST {base}/v1/subs/sync</code> 触发同步，返回节点概况。未配置只引导。</p>
-          </div>
-        </div>
-        <div class="set-group"><b>听歌 · 音乐网关</b>
-          <div class="card">
+          </div></div></div>
+        <div class="set-group" data-fold="1" data-title="听歌 · 音乐网关"><button type="button" class="set-fold-h" onclick="toggleSetGroup(this)" aria-expanded="false"><b>听歌 · 音乐网关</b><span class="set-fold-meta" data-fold-meta>—</span><svg class="i set-fold-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></button><div class="set-fold-body"><div class="card">
             <div class="field"><label>网关 Base URL</label><div class="fin"><input id="muGwBase" placeholder="https://your-gw.example" onchange="saveMusic()" onblur="saveMusic()"></div></div>
             <div class="field"><label>网关 Token</label><div class="fin"><input id="muGwToken" type="password" placeholder="鉴权 token" onchange="saveMusic()" onblur="saveMusic()"></div></div>
             <p style="font-size:12px;color:var(--muted);padding:4px 15px 12px;line-height:1.65">工具箱点「听歌」用输入框关键词搜索 → <code>GET {base}/v1/music/search?q=</code>；结果可点播 → <code>GET {base}/v1/music/play?id=</code> 返回音频 url 页内播放。cookie/key 不进前端。</p>
-          </div>
-        </div>
-        <div class="set-group"><b>文件处理 · 本机 + 可选 PDF 网关</b>
-          <div class="card">
+          </div></div></div>
+        <div class="set-group" data-fold="1" data-title="文件处理 · 本机 + 可选 PDF 网关"><button type="button" class="set-fold-h" onclick="toggleSetGroup(this)" aria-expanded="false"><b>文件处理 · 本机 + 可选 PDF 网关</b><span class="set-fold-meta" data-fold-meta>—</span><svg class="i set-fold-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></button><div class="set-fold-body"><div class="card">
             <div class="field"><label>PDF 网关 Base URL（可选）</label><div class="fin"><input id="flGwBase" placeholder="留空则 PDF 诚实提示需网关" onchange="saveFiles()" onblur="saveFiles()"></div></div>
             <div class="field"><label>网关 Token</label><div class="fin"><input id="flGwToken" type="password" placeholder="鉴权 token" onchange="saveFiles()" onblur="saveFiles()"></div></div>
             <p style="font-size:12px;color:var(--muted);padding:4px 15px 12px;line-height:1.65">工具箱点「文件」选本机文件：文本/Markdown 预览摘要、图片尺寸、CSV 前几行表格化，均在本地完成。PDF 需网关 <code>POST {base}/v1/files/extract</code>，未配网关时如实提示。</p>
-          </div>
-        </div>
-        <div class="set-group"><b>代码运行 · 执行网关</b>
-          <div class="card">
+          </div></div></div>
+        <div class="set-group" data-fold="1" data-title="代码运行 · 执行网关"><button type="button" class="set-fold-h" onclick="toggleSetGroup(this)" aria-expanded="false"><b>代码运行 · 执行网关</b><span class="set-fold-meta" data-fold-meta>—</span><svg class="i set-fold-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></button><div class="set-fold-body"><div class="card">
             <div class="field"><label>网关 Base URL</label><div class="fin"><input id="cdGwBase" placeholder="https://your-gw.example" onchange="saveCode()" onblur="saveCode()"></div></div>
             <div class="field"><label>网关 Token</label><div class="fin"><input id="cdGwToken" type="password" placeholder="鉴权 token" onchange="saveCode()" onblur="saveCode()"></div></div>
             <div class="field"><label>默认语言</label><div class="fin"><input id="cdLang" placeholder="python" onchange="saveCode()" onblur="saveCode()"></div></div>
             <p style="font-size:12px;color:var(--muted);padding:4px 15px 12px;line-height:1.65">工具箱点「代码」把输入框内容当代码提交执行网关 <code>POST {base}/v1/code/run</code>（body: lang/code/timeout_ms），回显 stdout/stderr/exit_code。本页不做浏览器内 eval。未配置只引导。</p>
-          </div>
-        </div>
-        <div class="set-group"><b>终端执行 · 受限网关</b>
-          <div class="card">
+          </div></div></div>
+        <div class="set-group" data-fold="1" data-title="终端执行 · 受限网关"><button type="button" class="set-fold-h" onclick="toggleSetGroup(this)" aria-expanded="false"><b>终端执行 · 受限网关</b><span class="set-fold-meta" data-fold-meta>—</span><svg class="i set-fold-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></button><div class="set-fold-body"><div class="card">
             <div class="field"><label>网关 Base URL</label><div class="fin"><input id="tmGwBase" placeholder="https://your-gw.example" onchange="saveTerm()" onblur="saveTerm()"></div></div>
             <div class="field"><label>网关 Token</label><div class="fin"><input id="tmGwToken" type="password" placeholder="鉴权 token" onchange="saveTerm()" onblur="saveTerm()"></div></div>
             <p style="font-size:12px;color:var(--muted);padding:4px 15px 12px;line-height:1.65">工具箱点「终端」把输入框内容当命令提交受限网关 <code>POST {base}/v1/terminal/run</code>（body: cmd/timeout_ms），回显 stdout/stderr/exit。本页不做假终端。未配置只引导。</p>
-          </div>
-        </div>
-        <div class="set-group"><b>浏览器自动化 · 任务网关</b>
-          <div class="card">
+          </div></div></div>
+        <div class="set-group" data-fold="1" data-title="浏览器自动化 · 任务网关"><button type="button" class="set-fold-h" onclick="toggleSetGroup(this)" aria-expanded="false"><b>浏览器自动化 · 任务网关</b><span class="set-fold-meta" data-fold-meta>—</span><svg class="i set-fold-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></button><div class="set-fold-body"><div class="card">
             <div class="field"><label>网关 Base URL</label><div class="fin"><input id="brGwBase" placeholder="https://your-gw.example" onchange="saveBrowser()" onblur="saveBrowser()"></div></div>
             <div class="field"><label>网关 Token</label><div class="fin"><input id="brGwToken" type="password" placeholder="鉴权 token" onchange="saveBrowser()" onblur="saveBrowser()"></div></div>
             <p style="font-size:12px;color:var(--muted);padding:4px 15px 12px;line-height:1.65">工具箱点「浏览器」用输入框写 URL 或目标，提交网关 <code>POST {base}/v1/browser/run</code>，返回标题/正文/截图。本页不做假进度。未配置只引导。</p>
-          </div>
-        </div>
-        <div class="set-group"><b>仓库同步 · Git 网关</b>
-          <div class="card">
+          </div></div></div>
+        <div class="set-group" data-fold="1" data-title="仓库同步 · Git 网关"><button type="button" class="set-fold-h" onclick="toggleSetGroup(this)" aria-expanded="false"><b>仓库同步 · Git 网关</b><span class="set-fold-meta" data-fold-meta>—</span><svg class="i set-fold-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></button><div class="set-fold-body"><div class="card">
             <div class="field"><label>网关 Base URL</label><div class="fin"><input id="gtGwBase" placeholder="https://your-gw.example" onchange="saveGit()" onblur="saveGit()"></div></div>
             <div class="field"><label>网关 Token</label><div class="fin"><input id="gtGwToken" type="password" placeholder="鉴权 token（自填，不进仓）" onchange="saveGit()" onblur="saveGit()"></div></div>
             <p style="font-size:12px;color:var(--muted);padding:4px 15px 12px;line-height:1.65">工具箱点「仓库」查状态 <code>GET {base}/v1/git/status</code>（branch/dirty/ahead/behind/last_commit），随后可点同步 <code>POST {base}/v1/git/sync</code>。不写死任何 PAT。</p>
-          </div>
-        </div>
-        <div class="set-group"><b>提醒 + 日历 · 日程网关</b>
-          <div class="card">
+          </div></div></div>
+        <div class="set-group" data-fold="1" data-title="提醒 + 日历 · 日程网关"><button type="button" class="set-fold-h" onclick="toggleSetGroup(this)" aria-expanded="false"><b>提醒 + 日历 · 日程网关</b><span class="set-fold-meta" data-fold-meta>—</span><svg class="i set-fold-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></button><div class="set-fold-body"><div class="card">
             <div class="field"><label>网关 Base URL</label><div class="fin"><input id="clGwBase" placeholder="https://your-gw.example" onchange="saveCal()" onblur="saveCal()"></div></div>
             <div class="field"><label>网关 Token</label><div class="fin"><input id="clGwToken" type="password" placeholder="鉴权 token" onchange="saveCal()" onblur="saveCal()"></div></div>
             <p style="font-size:12px;color:var(--muted);padding:4px 15px 12px;line-height:1.65">工具箱「提醒」「日历」共用日程网关：<code>GET {base}/v1/calendar/list</code> 列近 7 天，<code>POST {base}/v1/calendar/add</code> 添加（body: title/start/remind）。网关可接 CalDAV/Apple 桥/自建存储。未配置只引导，不装假列表。</p>
-          </div>
-        </div>
-        <div class="set-group"><b>地图 · 搜索网关</b>
-          <div class="card">
+          </div></div></div>
+        <div class="set-group" data-fold="1" data-title="地图 · 搜索网关"><button type="button" class="set-fold-h" onclick="toggleSetGroup(this)" aria-expanded="false"><b>地图 · 搜索网关</b><span class="set-fold-meta" data-fold-meta>—</span><svg class="i set-fold-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></button><div class="set-fold-body"><div class="card">
             <div class="field"><label>网关 Base URL</label><div class="fin"><input id="mpGwBase" placeholder="https://your-gw.example" onchange="saveMaps()" onblur="saveMaps()"></div></div>
             <div class="field"><label>网关 Token</label><div class="fin"><input id="mpGwToken" type="password" placeholder="鉴权 token" onchange="saveMaps()" onblur="saveMaps()"></div></div>
             <p style="font-size:12px;color:var(--muted);padding:4px 15px 12px;line-height:1.65">工具箱点「地图」用输入框关键词搜地点 <code>GET {base}/v1/maps/search?q=</code> → 名称/地址/坐标列表，点结果用系统地图打开。未配置只引导。</p>
-          </div>
-        </div>
-        <div class="set-group"><b>家居 + 健康 · Home/Health 网关</b>
-          <div class="card">
+          </div></div></div>
+        <div class="set-group" data-fold="1" data-title="家居 + 健康 · Home/Health 网关"><button type="button" class="set-fold-h" onclick="toggleSetGroup(this)" aria-expanded="false"><b>家居 + 健康 · Home/Health 网关</b><span class="set-fold-meta" data-fold-meta>—</span><svg class="i set-fold-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></button><div class="set-fold-body"><div class="card">
             <div class="field"><label>网关 Base URL</label><div class="fin"><input id="hmGwBase" placeholder="https://your-gw.example" onchange="saveHome()" onblur="saveHome()"></div></div>
             <div class="field"><label>网关 Token</label><div class="fin"><input id="hmGwToken" type="password" placeholder="鉴权 token" onchange="saveHome()" onblur="saveHome()"></div></div>
             <p style="font-size:12px;color:var(--muted);padding:4px 15px 12px;line-height:1.65">工具箱「家居」→ <code>GET {base}/v1/home/devices</code>；「健康」→ <code>GET {base}/v1/health/summary</code>。未配置只引导，不装假仪表盘。</p>
-          </div>
-        </div>
-        <div class="set-group"><b>技能 / MCP / 定时 · 桥接网关</b>
-          <div class="card">
+          </div></div></div>
+        <div class="set-group" data-fold="1" data-title="技能 / MCP / 定时 · 桥接网关"><button type="button" class="set-fold-h" onclick="toggleSetGroup(this)" aria-expanded="false"><b>技能 / MCP / 定时 · 桥接网关</b><span class="set-fold-meta" data-fold-meta>—</span><svg class="i set-fold-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></button><div class="set-fold-body"><div class="card">
             <div class="field"><label>桥接网关 Base URL（共用）</label><div class="fin"><input id="bgGwBase" placeholder="https://your-bridge.example" onchange="saveBridge()" onblur="saveBridge()"></div></div>
             <div class="field"><label>网关 Token</label><div class="fin"><input id="bgGwToken" type="password" placeholder="鉴权 token" onchange="saveBridge()" onblur="saveBridge()"></div></div>
             <p style="font-size:12px;color:var(--muted);padding:4px 15px 12px;line-height:1.65">侧栏/设置点「技能中心」「MCP」「定时任务」→ <code>GET {base}/v1/skills</code>、<code>/v1/mcp/servers</code>、<code>/v1/cron</code>。未配置显示「—」，不装假数字。</p>
-          </div>
-        </div>
-        <div class="set-group"><b>测站 · 浏览器直连 + 可选网关</b>
-          <div class="card">
+          </div></div></div>
+        <div class="set-group" data-fold="1" data-title="测站 · 浏览器直连 + 可选网关"><button type="button" class="set-fold-h" onclick="toggleSetGroup(this)" aria-expanded="false"><b>测站 · 浏览器直连 + 可选网关</b><span class="set-fold-meta" data-fold-meta>—</span><svg class="i set-fold-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></button><div class="set-fold-body"><div class="card">
             <div class="field"><label>网关 Base URL（可选）</label><div class="fin"><input id="pbGwBase" placeholder="留空走浏览器直连" onchange="saveProbe()" onblur="saveProbe()"></div></div>
             <div class="field"><label>网关 Token（可选）</label><div class="fin"><input id="pbGwToken" type="password" placeholder="网关鉴权 token" onchange="saveProbe()" onblur="saveProbe()"></div></div>
             <div class="field"><label>体检默认目标（每行一条 URL）</label><div class="fin"><textarea id="pbTargets" rows="2" placeholder="https://example.com&#10;https://api.example.com" onchange="saveProbe()" onblur="saveProbe()" style="width:100%;resize:vertical;min-height:50px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;font-size:13px;color:var(--ink)"></textarea></div>
@@ -1140,17 +1119,29 @@ body.less-fx *{animation-duration:.01ms!important;animation-iteration-count:1!im
             <div class="row"><span class="ric ic-green"><svg class="i i-s"><use href="#i-shield"/></svg></span><span class="rt"><b>本地沙箱模式</b><span>一切计算留在设备内</span></span><span class="badge badge-ok">始终开启</span></div>
             <div class="row"><span class="ric ic-blue"><svg class="i i-s"><use href="#i-brain"/></svg></span><span class="rt"><b>敏感文件出仓拦截</b><span>密钥与生物特征不进同步</span></span><button class="tgl on" onclick="tg(this)"></button></div>
           </div>
-        </div>
+        </div></div></div><div class="set-group" data-fold="1" data-title="平台能力"><button type="button" class="set-fold-h" onclick="toggleSetGroup(this)" aria-expanded="false"><b>平台能力</b><span class="set-fold-meta" data-fold-meta>—</span><svg class="i set-fold-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></button><div class="set-fold-body"><div class="card">
+            <div class="row"><span class="ric ic-blue"><svg class="i i-s"><use href="#i-globe"/></svg></span><span class="rt"><b>联网搜索</b><span>工具开关镜像 · 真源见上方</span></span><span class="badge badge-ok">输入区</span></div>
+            <div class="row"><span class="ric ic-green"><svg class="i i-s"><use href="#i-terminal"/></svg></span><span class="rt"><b>终端与文件系统</b><span>网页端未接 · 需网关/Minis</span></span><span class="badge">未接</span></div>
+            <div class="row"><span class="ric ic-yellow"><svg class="i i-s"><use href="#i-music"/></svg></span><span class="rt"><b>音乐播放</b><span>网页端未接 · 规划 REAL-4</span></span><span class="badge">未接</span></div>
+            <div class="row"><span class="ric ic-red"><svg class="i i-s"><use href="#i-clock"/></svg></span><span class="rt"><b>定时任务</b><span>走 iOS Shortcuts / Minis</span></span><span class="badge">未接</span></div>
+          </div></div></div>
+        <div class="set-group" data-fold="1" data-title="桥接"><button type="button" class="set-fold-h" onclick="toggleSetGroup(this)" aria-expanded="false"><b>桥接</b><span class="set-fold-meta" data-fold-meta>—</span><svg class="i set-fold-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></button><div class="set-fold-body"><div class="card">
+            <div class="row"><span class="ric ic-blue"><svg class="i i-s"><use href="#i-branch"/></svg></span><span class="rt"><b>QQ 桥接</b><span>网页端未接</span></span><span class="badge">未接</span></div>
+            <div class="row"><span class="ric ic-red"><svg class="i i-s"><use href="#i-heart"/></svg></span><span class="rt"><b>玩具桥</b><span>网页端未接 · Minis/BLE</span></span><span class="badge">未接</span></div>
+            <div class="row"><span class="ric ic-green"><svg class="i i-s"><use href="#i-sync"/></svg></span><span class="rt"><b>节点订阅同步</b><span>网页端未接</span></span><span class="badge">未接</span></div>
+            <div class="row"><span class="ric ic-yellow"><svg class="i i-s"><use href="#i-shield"/></svg></span><span class="rt"><b>接入站自动安检</b><span>网页端未接</span></span><span class="badge">未接</span></div>
+          </div></div></div>
+        <div class="set-group" data-fold="1" data-title="隐私边界"><button type="button" class="set-fold-h" onclick="toggleSetGroup(this)" aria-expanded="false"><b>隐私边界</b><span class="set-fold-meta" data-fold-meta>—</span><svg class="i set-fold-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></button><div class="set-fold-body"><div class="card">
+            <div class="row"><span class="ric ic-green"><svg class="i i-s"><use href="#i-shield"/></svg></span><span class="rt"><b>本地沙箱模式</b><span>一切计算留在设备内</span></span><span class="badge badge-ok">始终开启</span></div>
+            <div class="row"><span class="ric ic-blue"><svg class="i i-s"><use href="#i-brain"/></svg></span><span class="rt"><b>敏感文件出仓拦截</b><span>密钥与生物特征不进同步</span></span><button class="tgl on" onclick="tg(this)"></button></div>
+          </div></div></div>
       </div>
       </div>
 
       <!-- agents -->
       <div class="set-page" id="p-agent">
-        <div class="set-group"><b>切换身份</b>
-          <div class="ag-strip" id="agStrip"></div>
-        </div>
-        <div class="set-group"><b>编辑</b>
-          <div class="card ag-card">
+        <div class="set-group" data-fold="1" data-title="切换身份"><button type="button" class="set-fold-h" onclick="toggleSetGroup(this)" aria-expanded="false"><b>切换身份</b><span class="set-fold-meta" data-fold-meta>—</span><svg class="i set-fold-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></button><div class="set-fold-body"><div class="ag-strip" id="agStrip"></div></div></div>
+        <div class="set-group" data-fold="1" data-title="编辑"><button type="button" class="set-fold-h" onclick="toggleSetGroup(this)" aria-expanded="false"><b>编辑</b><span class="set-fold-meta" data-fold-meta>—</span><svg class="i set-fold-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></button><div class="set-fold-body"><div class="card ag-card">
             <div class="ag-head">
               <button class="ag-bigav" id="agBigAv" title="点击上传头像" onclick="pickAgImg()">W</button>
               <div class="ag-id">
@@ -1194,60 +1185,47 @@ body.less-fx *{animation-duration:.01ms!important;animation-iteration-count:1!im
             <button class="btn-ghost" onclick="dupAgent()">存为副本</button>
             <button class="btn-ghost btn-danger" onclick="delAgent()" style="padding:9px 12px"><svg class="i i-s"><use href="#i-trash"/></svg></button>
           </div>
-          <p class="ag-note">切换智能体即切换身份，对话记忆互相隔离。头像与提示词不上传。</p>
-        </div>
+          <p class="ag-note">切换智能体即切换身份，对话记忆互相隔离。头像与提示词不上传。</p></div></div>
       </div>
 
       <!-- app -->
       <div class="set-page" id="p-app">
-        <div class="set-group"><b>主题</b>
-          <div class="card" style="padding:12px 15px">
+        <div class="set-group" data-fold="1" data-title="主题"><button type="button" class="set-fold-h" onclick="toggleSetGroup(this)" aria-expanded="false"><b>主题</b><span class="set-fold-meta" data-fold-meta>—</span><svg class="i set-fold-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></button><div class="set-fold-body"><div class="card" style="padding:12px 15px">
             <div class="seg">
               <button class="active" onclick="setTheme('light',this)">浅色</button>
               <button onclick="setTheme('dark',this)">深色</button>
               <button onclick="setTheme('system',this)">跟随系统</button>
             </div>
-          </div>
-        </div>
-        <div class="set-group"><b>正文字号</b>
-          <div class="card" style="padding:12px 15px">
+          </div></div></div>
+        <div class="set-group" data-fold="1" data-title="正文字号"><button type="button" class="set-fold-h" onclick="toggleSetGroup(this)" aria-expanded="false"><b>正文字号</b><span class="set-fold-meta" data-fold-meta>—</span><svg class="i set-fold-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></button><div class="set-fold-body"><div class="card" style="padding:12px 15px">
             <div class="seg">
               <button onclick="setFont('13.5px',this)">小</button>
               <button class="active" onclick="setFont('15px',this)">标准</button>
               <button onclick="setFont('16.5px',this)">大</button>
             </div>
-          </div>
-        </div>
-        <div class="set-group"><b>气泡样式</b>
-          <div class="card">
+          </div></div></div>
+        <div class="set-group" data-fold="1" data-title="气泡样式"><button type="button" class="set-fold-h" onclick="toggleSetGroup(this)" aria-expanded="false"><b>气泡样式</b><span class="set-fold-meta" data-fold-meta>—</span><svg class="i set-fold-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></button><div class="set-fold-body"><div class="card">
             <div class="row"><span class="rt"><b>用户气泡直角</b><span>从圆角 14px 切到 4px</span></span><button class="tgl" onclick="tg(this,'sqBubble')"></button></div>
             <div class="row"><span class="rt"><b>代码块行号</b><span>侧栏数字列，关闭即无</span></span><button class="tgl" onclick="tg(this,'lineNo')"></button></div>
             <div class="row"><span class="rt"><b>减少动效</b><span>关闭入场动画与过渡</span></span><button class="tgl" onclick="tg(this,'lessFx')"></button></div>
-          </div>
-        </div>
-        <div class="set-group"><b>关于</b>
-          <div class="card">
+          </div></div></div>
+        <div class="set-group" data-fold="1" data-title="关于"><button type="button" class="set-fold-h" onclick="toggleSetGroup(this)" aria-expanded="false"><b>关于</b><span class="set-fold-meta" data-fold-meta>—</span><svg class="i set-fold-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></button><div class="set-fold-body"><div class="card">
             <div class="row"><span class="rt"><b>版本</b><span class="mono">Workbench 0.9.0 · 功能接线版</span></span></div>
             <div class="row"><span class="rt"><b>运行环境</b><span class="mono">iOS · Local Sandbox · ARM64</span></span></div>
-          </div>
-        </div>
+          </div></div></div>
       </div>
 
       <!-- data -->
       <div class="set-page" id="p-data">
-        <div class="set-group"><b>导出</b>
-          <div class="card">
+        <div class="set-group" data-fold="1" data-title="导出"><button type="button" class="set-fold-h" onclick="toggleSetGroup(this)" aria-expanded="false"><b>导出</b><span class="set-fold-meta" data-fold-meta>—</span><svg class="i set-fold-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></button><div class="set-fold-body"><div class="card">
             <button class="row" onclick="exportData()"><span class="ric ic-blue"><svg class="i i-s"><use href="#i-download"/></svg></span><span class="rt"><b>导出全部对话</b><span>JSON · 不含 API 密钥</span></span></button>
             <button class="row" onclick="importData()"><span class="ric ic-green"><svg class="i i-s"><use href="#i-sync"/></svg></span><span class="rt"><b>导入备份 JSON</b><span>覆盖本机会话/智能体/偏好</span></span></button>
             <button class="row" data-toast="网页端记忆在「记忆库」里；Minis 全局记忆文件这里碰不到"><span class="ric ic-green"><svg class="i i-s"><use href="#i-brain"/></svg></span><span class="rt"><b>备份记忆库</b><span>网页端无 Minis 文件访问</span></span></button>
-          </div>
-        </div>
-        <div class="set-group"><b>清除</b>
-          <div class="card">
+          </div></div></div>
+        <div class="set-group" data-fold="1" data-title="清除"><button type="button" class="set-fold-h" onclick="toggleSetGroup(this)" aria-expanded="false"><b>清除</b><span class="set-fold-meta" data-fold-meta>—</span><svg class="i set-fold-chev" aria-hidden="true"><use href="#i-chev-r"/></svg></button><div class="set-fold-body"><div class="card">
             <button class="row btn-danger" data-toast="网页端没有媒体缓存可清；歌曲/图片缓存在 Minis 原生端"><span class="ric ic-red"><svg class="i i-s"><use href="#i-trash"/></svg></span><span class="rt"><b style="color:var(--red-t)">清除媒体缓存</b><span>本页无缓存 · 请走 Minis</span></span></button>
             <button class="row btn-danger" onclick="wipeSessions()"><span class="ric ic-red"><svg class="i i-s"><use href="#i-trash"/></svg></span><span class="rt"><b style="color:var(--red-t)">删除所有对话记录</b><span>不可恢复 · 不含记忆库</span></span></button>
-          </div>
-        </div>
+          </div></div></div>
         <p style="font-size:12px;color:var(--muted);padding:4px 6px;line-height:1.7">对话记录与密钥只保存在本机沙箱。删除记忆需要你亲口确认，我不会替你删任何东西。</p>
       </div>
 
@@ -1317,15 +1295,73 @@ let _focusBack=null;
 function openSheet(n){
   try{_focusBack=document.activeElement;}catch(e){_focusBack=null;}
   closePanels();$(n).classList.add('open');if(window.innerWidth<900)$('scrim').classList.add('on');
-  if(n==='settings'){fillWebSearchForm();fillImageGenForm();fillSpeechForm();fillVideoForm();fillProbeForm();fillNodesForm();fillMusicForm();fillFilesForm();fillCodeForm();fillTermForm();fillBrowserForm();fillGitForm();fillCalForm();fillMapsForm();fillHomeForm();fillBridgeForm();}
+  if(n==='settings'){fillWebSearchForm();fillImageGenForm();fillSpeechForm();fillVideoForm();fillProbeForm();fillNodesForm();fillMusicForm();fillFilesForm();fillCodeForm();fillTermForm();fillBrowserForm();fillGitForm();fillCalForm();fillMapsForm();fillHomeForm();fillBridgeForm();refreshSetGroupMetas();}
   setTimeout(()=>{const root=$(n);if(!root)return;const f=root.querySelector('input:not([type=hidden]),textarea,button.icon-btn,[tabindex]:not([tabindex="-1"])');if(f)try{f.focus();}catch(e){};},30);
 }
-function closePanels(){$('toolbox').classList.remove('open');$('settings').classList.remove('open');$('modelMenu').classList.remove('open');$('avatars').classList.remove('open');$('sessmenu').classList.remove('open');$('memmgr').classList.remove('open');}
-function closeAll(){
-  closePanels();$('sidebar').classList.remove('open');$('scrim').classList.remove('on');
-  const back=_focusBack;_focusBack=null;
-  setTimeout(()=>{try{(back&&back.focus)?back.focus():($('promptBox')&&$('promptBox').focus());}catch(e){}},20);
+
+/* ================= UX-2a: settings fold ================= */
+function toggleSetGroup(btn){
+  var g=btn && btn.closest ? btn.closest('.set-group') : null;
+  if(!g)return;
+  var on=g.classList.toggle('open');
+  g.dataset.userFold='1';
+  btn.setAttribute('aria-expanded', on?'true':'false');
 }
+function setGroupOpen(g, on){
+  if(!g)return;
+  g.classList.toggle('open', !!on);
+  var btn=g.querySelector('.set-fold-h');
+  if(btn)btn.setAttribute('aria-expanded', on?'true':'false');
+}
+/** 已填则 meta=已配置并默认展开；空则收起 */
+function refreshSetGroupMetas(){
+  document.querySelectorAll('.set-group[data-fold="1"]').forEach(function(g){
+    var body=g.querySelector('.set-fold-body');
+    var meta=g.querySelector('[data-fold-meta]');
+    if(!body||!meta)return;
+    var inputs=[].slice.call(body.querySelectorAll('input,textarea,select'));
+    var filled=inputs.some(function(el){
+      if(!el || el.type==='hidden')return false;
+      var v=(el.value||'').trim();
+      if(!v)return false;
+      // ignore pure placeholder-looking defaults that are still "empty config" for keys
+      if(el.type==='password')return v.length>0;
+      // URL defaults count as not-really-configured if it's the only non-empty and no key sibling
+      return true;
+    });
+    // smarter: if group has password/key field, require key; else any non-empty
+    var keyEl=body.querySelector('input[type=password], input[id$=Key], input[id$=Token], input[id*=Token], input[id*=Key]');
+    var conf=false;
+    if(keyEl){ conf=!!((keyEl.value||'').trim()); }
+    else {
+      conf=inputs.some(function(el){ return (el.value||'').trim().length>0 && el.type!=='hidden'; });
+    }
+    meta.textContent=conf?'已配置':'未配置';
+    meta.classList.toggle('on', conf);
+    // 默认：未配置收起；已配置保持用户点过的，首次无 open 时已配置展开
+    if(!g.dataset.userFold){
+      setGroupOpen(g, conf);
+    }
+  });
+}
+function markSetGroupUserFold(g){ if(g) g.dataset.userFold='1'; }
+
+function closePanels(){
+  ['toolbox','settings','modelMenu','avatars','sessmenu','memmgr','bridge'].forEach(function(id){
+    var el=$(id); if(el) el.classList.remove('open');
+  });
+  document.querySelectorAll('.sheet.open').forEach(function(el){ el.classList.remove('open'); });
+}
+function closeAll(){
+  closePanels();
+  var sb=$('sidebar'); if(sb) sb.classList.remove('open');
+  var sc=$('scrim'); if(sc) sc.classList.remove('on');
+  var back=_focusBack; _focusBack=null;
+  setTimeout(function(){
+    try{(back&&back.focus)?back.focus():($('promptBox')&&$('promptBox').focus());}catch(e){}
+  },20);
+}
+
 document.addEventListener('click',e=>{if(!e.target.closest('.model-menu')&&!e.target.closest('.model-chip'))$('modelMenu').classList.remove('open');});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();closeAll();}});
 function tg(b,key){
@@ -1333,7 +1369,8 @@ function tg(b,key){
   if(key){DB.prefs[key]=b.classList.contains('on');applyPrefs();save();if(key==='lineNo')renderThread();}
 }
 function segSel(b){b.parentNode.querySelectorAll('button').forEach(x=>x.classList.remove('active'));b.classList.add('active');}
-function setTab(btn,id){document.querySelectorAll('.set-tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');document.querySelectorAll('.set-page').forEach(p=>p.classList.remove('active'));$(id).classList.add('active');}
+function setTab(btn,id){document.querySelectorAll('.set-tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');document.querySelectorAll('.set-page').forEach(p=>p.classList.remove('active'));$(id).classList.add('active');try{refreshSetGroupMetas();}catch(e){}
+}
 
 /* ================= 头像体系 ================= */
 const AVC=[{t:'星',c:'acc'},{t:'梦',c:'neu'},{t:'X',c:'dark'},{t:'月',c:'neu'},{t:'桃',c:'acc'},{t:'K',c:'neu'},{t:'茶',c:'acc'},{t:'O',c:'dark'},{t:'M',c:'neu'},{t:'柚',c:'acc'}];
