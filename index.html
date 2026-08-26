@@ -1039,6 +1039,13 @@ body.less-fx *{animation-duration:.01ms!important;animation-iteration-count:1!im
             <p style="font-size:12px;color:var(--muted);padding:4px 15px 12px;line-height:1.65">工具箱点「代码」把输入框内容当代码提交执行网关 <code>POST {base}/v1/code/run</code>（body: lang/code/timeout_ms），回显 stdout/stderr/exit_code。本页不做浏览器内 eval。未配置只引导。</p>
           </div>
         </div>
+        <div class="set-group"><b>终端执行 · 受限网关</b>
+          <div class="card">
+            <div class="field"><label>网关 Base URL</label><div class="fin"><input id="tmGwBase" placeholder="https://your-gw.example" onchange="saveTerm()" onblur="saveTerm()"></div></div>
+            <div class="field"><label>网关 Token</label><div class="fin"><input id="tmGwToken" type="password" placeholder="鉴权 token" onchange="saveTerm()" onblur="saveTerm()"></div></div>
+            <p style="font-size:12px;color:var(--muted);padding:4px 15px 12px;line-height:1.65">工具箱点「终端」把输入框内容当命令提交受限网关 <code>POST {base}/v1/terminal/run</code>（body: cmd/timeout_ms），回显 stdout/stderr/exit。本页不做假终端。未配置只引导。</p>
+          </div>
+        </div>
         <div class="set-group"><b>测站 · 浏览器直连 + 可选网关</b>
           <div class="card">
             <div class="field"><label>网关 Base URL（可选）</label><div class="fin"><input id="pbGwBase" placeholder="留空走浏览器直连" onchange="saveProbe()" onblur="saveProbe()"></div></div>
@@ -1211,7 +1218,8 @@ function defaults(){return{
   nodes:{gwBase:'',gwToken:''},
   music:{gwBase:'',gwToken:''},
   files:{gwBase:'',gwToken:''},
-  code:{gwBase:'',gwToken:'',lang:'python'}
+  code:{gwBase:'',gwToken:'',lang:'python'},
+  term:{gwBase:'',gwToken:''}
 };}
 let DB=null;
 function loadDB(){
@@ -1238,7 +1246,7 @@ let _focusBack=null;
 function openSheet(n){
   try{_focusBack=document.activeElement;}catch(e){_focusBack=null;}
   closePanels();$(n).classList.add('open');if(window.innerWidth<900)$('scrim').classList.add('on');
-  if(n==='settings'){fillWebSearchForm();fillImageGenForm();fillSpeechForm();fillVideoForm();fillProbeForm();fillNodesForm();fillMusicForm();fillFilesForm();fillCodeForm();}
+  if(n==='settings'){fillWebSearchForm();fillImageGenForm();fillSpeechForm();fillVideoForm();fillProbeForm();fillNodesForm();fillMusicForm();fillFilesForm();fillCodeForm();fillTermForm();}
   setTimeout(()=>{const root=$(n);if(!root)return;const f=root.querySelector('input:not([type=hidden]),textarea,button.icon-btn,[tabindex]:not([tabindex="-1"])');if(f)try{f.focus();}catch(e){};},30);
 }
 function closePanels(){$('toolbox').classList.remove('open');$('settings').classList.remove('open');$('modelMenu').classList.remove('open');$('avatars').classList.remove('open');$('sessmenu').classList.remove('open');$('memmgr').classList.remove('open');}
@@ -2294,6 +2302,72 @@ async function doVideo(s,prompt){
   }
 }
 
+/* ================= R9 终端执行 · 受限网关 ================= */
+function ensureTerm(){
+  if(!DB.term)DB.term={gwBase:'',gwToken:''};
+  return DB.term;
+}
+function termConfigured(){
+  const t=ensureTerm();return !!(t.gwBase&&t.gwBase.trim()&&t.gwToken&&t.gwToken.trim());
+}
+function fillTermForm(){
+  const t=ensureTerm();const b=$('tmGwBase'),k=$('tmGwToken');
+  if(b)b.value=t.gwBase||'';if(k)k.value=t.gwToken||'';
+}
+function saveTerm(){
+  const t=ensureTerm();const b=$('tmGwBase'),k=$('tmGwToken');
+  if(b)t.gwBase=(b.value||'').trim().replace(/\/$/,'');if(k)t.gwToken=(k.value||'').trim();save();markToolboxHonesty();
+}
+async function runTerm(){
+  closeAll();
+  if(!termConfigured()){
+    toast('未配置终端网关 · 打开 设置→功能 填写 Base/Token');
+    openSheet('settings');const tabs=[...document.querySelectorAll('.set-tab')];
+    const ft=tabs.find(t=>(t.getAttribute('onclick')||'').indexOf('p-func')>=0)||tabs[1]||tabs[0];
+    if(ft)setTab(ft,'p-func');fillTermForm();
+    setTimeout(()=>{const el=$('tmGwBase');if(el)try{el.focus();}catch(e){}},40);return;
+  }
+  const cmd=($('promptBox').value||'').trim();
+  if(!cmd){toast('在输入框写要执行的命令，再点终端');$('promptBox').focus();return;}
+  if(state.gen)return toast('请等当前结束');
+  const t=ensureTerm();
+  const s=ensureSession('终端');
+  s.msgs.push({role:'user',content:'[终端] '+cmd.slice(0,300)});
+  s.updatedAt=Date.now();
+  if(s.msgs.filter(m=>m.role==='user').length===1)s.title='终端';
+  if(DB.prefs.clearAfter!==false)$('promptBox').value='';autoGrow();
+  showThread();renderThread();renderChatList();save();
+  const sid=pushStep('执行命令','running',cmd.slice(0,40));
+  const ai={role:'ai',content:'',pending:true,t0:Date.now(),model:{pid:'term'}};
+  s.msgs.push(ai);renderThread();
+  try{
+    const ctl=new AbortController();state.gen=ctl;setSendBtn(true);renderSandbox();
+    const r=await fetch(t.gwBase+'/v1/terminal/run',{
+      method:'POST',signal:ctl.signal,
+      headers:Object.assign({'Content-Type':'application/json'},t.gwToken?{'Authorization':'Bearer '+t.gwToken}:{}),
+      body:JSON.stringify({cmd,timeout_ms:8000})
+    });
+    if(!r.ok){const tx=await r.text().catch(()=>'');throw new Error('HTTP '+r.status+(tx?' · '+tx.slice(0,160):''));}
+    const j=await r.json();
+    const stdout=String(j.stdout||'');
+    const stderr=String(j.stderr||'');
+    const exit=Number(j.exit_code!==undefined?j.exit_code:(j.exitCode!==undefined?j.exitCode:0));
+    const lines=['**终端 · '+esc(cmd.slice(0,60))+(cmd.length>60?'…':'')+' · exit '+(exit===0?'0':'非0('+exit+')')+'**'];
+    if(stdout)lines.push('\n**stdout**\n\n```\n'+stdout.slice(0,2000)+(stdout.length>2000?'\n…(截断)':'')+'\n```');
+    if(stderr)lines.push('\n**stderr**\n\n```\n'+stderr.slice(0,2000)+(stderr.length>2000?'\n…(截断)':'')+'\n```');
+    if(!stdout&&!stderr)lines.push('\n（无输出）');
+    ai.content=lines.join('\n');
+    patchStep(sid,{status:'done',summary:'exit '+exit});
+    toast('命令完成');
+  }catch(e){
+    if(e.name==='AbortError'){ai.content='(已停止)';patchStep(sid,{status:'stopped',summary:'用户停止'});}
+    else{ai.err='执行失败：'+(e.message||String(e));patchStep(sid,{status:'error',summary:String(ai.err).slice(0,160)});toast('执行失败');}
+  }finally{
+    ai.pending=false;state.gen=null;setSendBtn(false);
+    s.updatedAt=Date.now();save();renderThread();renderChatList();renderSandbox();
+  }
+}
+
 /* ================= R8 代码运行 · 执行网关 ================= */
 function ensureCode(){
   if(!DB.code)DB.code={gwBase:'',gwToken:'',lang:'python'};
@@ -3101,7 +3175,8 @@ function exportData(){
     nodes:{gwBase:(DB.nodes&&DB.nodes.gwBase)||'',gwToken:''},
     music:{gwBase:(DB.music&&DB.music.gwBase)||'',gwToken:''},
     files:{gwBase:(DB.files&&DB.files.gwBase)||'',gwToken:''},
-    code:{gwBase:(DB.code&&DB.code.gwBase)||'',lang:(DB.code&&DB.code.lang)||'python',gwToken:''}
+    code:{gwBase:(DB.code&&DB.code.gwBase)||'',lang:(DB.code&&DB.code.lang)||'python',gwToken:''},
+    term:{gwBase:(DB.term&&DB.term.gwBase)||'',gwToken:''}
   };
   const blob=new Blob([JSON.stringify(dump,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='workbench-backup.json';a.click();
@@ -3162,6 +3237,10 @@ function importData(){
         if(raw.code&&typeof raw.code==='object'){
           DB.code=Object.assign({gwBase:'',gwToken:'',lang:'python'},DB.code||{},raw.code);
           if(!raw.code.gwToken||/勿外传|redact|\*+|已剥离/i.test(String(raw.code.gwToken)))DB.code.gwToken='';
+        }
+        if(raw.term&&typeof raw.term==='object'){
+          DB.term=Object.assign({gwBase:'',gwToken:''},DB.term||{},raw.term);
+          if(!raw.term.gwToken||/勿外传|redact|\*+|已剥离/i.test(String(raw.term.gwToken)))DB.term.gwToken='';
         }
         if(Array.isArray(raw.providers)){
           DB.providers=raw.providers.map(p=>({
@@ -3277,7 +3356,7 @@ const activeTools=new Set();
 /** 网页端可真接的挂载工具（可点亮） */
 const TOOL_LIVE=new Set(['联网搜索','深度思考','长期记忆']);
 /** 点击即行动，不进 activeTools 挂载 */
-const TOOL_ACTION=new Set(['视觉理解','图像生成','语音合成','视频生成','测站','站点体检','节点同步','音乐播放','文件处理','代码运行']);
+const TOOL_ACTION=new Set(['视觉理解','图像生成','语音合成','视频生成','测站','站点体检','节点同步','音乐播放','文件处理','代码运行','终端执行']);
 /** 其余全部未接 */
 const TOOL_UNAVAILABLE_HINT={
   '提醒事项':'网页端未接 · 请用系统提醒/Minis',
@@ -3285,7 +3364,6 @@ const TOOL_UNAVAILABLE_HINT={
   '地图':'网页端未接地图',
   '智能家居':'网页端未接 HomeKit',
   '健康数据':'网页端未接 HealthKit',
-  '终端执行':'网页端未接终端（规划 REAL-5 网关）',
   '浏览器自动化':'网页端未接浏览器自动化',
   '仓库同步':'网页端未接 git 推送',
 };
@@ -3306,6 +3384,7 @@ function markToolboxHonesty(){
     else if(t==='音乐播放'){badge.textContent=musicConfigured()?'可用·听歌':'需配置';b.classList.toggle('tb-live',musicConfigured());b.disabled=false;}
     else if(t==='文件处理'){badge.textContent='可用';b.classList.add('tb-live');b.disabled=false;}
     else if(t==='代码运行'){badge.textContent=codeConfigured()?'可用·运行':'需配置';b.classList.toggle('tb-live',codeConfigured());b.disabled=false;}
+    else if(t==='终端执行'){badge.textContent=termConfigured()?'可用·执行':'需配置';b.classList.toggle('tb-live',termConfigured());b.disabled=false;}
     else{
       badge.textContent='未接';b.classList.add('tb-off');b.setAttribute('aria-disabled','true');
     }
@@ -3339,6 +3418,7 @@ document.querySelectorAll('.tb-item,.ctx-toggle').forEach(b=>b.addEventListener(
   if(t==='音乐播放'){runMusic();return;}
   if(t==='文件处理'){runFiles();return;}
   if(t==='代码运行'){runCode();return;}
+  if(t==='终端执行'){runTerm();return;}
   if(!TOOL_LIVE.has(t) && b.classList.contains('tb-item')){
     toast(TOOL_UNAVAILABLE_HINT[t]||('「'+t+'」未接'));return;
   }
@@ -3364,7 +3444,7 @@ function slashPrefill(cmd,text){
 /* ================= 初始化 ================= */
 function initPrefsUI(){
   applyTheme(DB.prefs.theme);document.body.style.fontSize=DB.prefs.font;
-  fillWebSearchForm();fillImageGenForm();fillSpeechForm();fillVideoForm();fillProbeForm();fillNodesForm();fillMusicForm();fillFilesForm();fillCodeForm();
+  fillWebSearchForm();fillImageGenForm();fillSpeechForm();fillVideoForm();fillProbeForm();fillNodesForm();fillMusicForm();fillFilesForm();fillCodeForm();fillTermForm();
   document.querySelectorAll('#p-app .seg').forEach(seg=>{
     [...seg.children].forEach(b=>{
       const oc=b.getAttribute('onclick')||'';
