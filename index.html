@@ -1522,7 +1522,9 @@ function renderProviders(){
     const row=document.createElement('button');row.className='row';row.style.textAlign='left';
     row.innerHTML=`<span class="ric ic-blue"><svg class="i i-s"><use href="#i-key"/></svg></span>
       <span class="rt" style="min-width:0"><b>${esc(p.name)}</b><span class="mono" style="word-break:break-all">${esc(p.base.replace(/^https?:\/\//,''))}</span></span>${provStatusBadge(p)}
-      <span class="icon-btn" data-del style="width:30px;height:30px;flex:none"><svg class="i i-s"><use href="#i-trash"/></svg></span>`;
+      <span class="icon-btn" data-edit style="width:30px;height:30px;flex:none" title="编辑"><svg class="i i-s"><use href="#i-edit"/></svg></span>
+      <span class="icon-btn" data-del style="width:30px;height:30px;flex:none" title="删除"><svg class="i i-s"><use href="#i-trash"/></svg></span>`;
+    row.querySelector('[data-edit]').onclick=e=>{e.stopPropagation();editProvider(p.id);};
     row.querySelector('[data-del]').onclick=e=>{e.stopPropagation();DB.providers=DB.providers.filter(x=>x!==p);if(DB.defModel&&DB.defModel.pid===p.id)DB.defModel=null;renderProviders();renderModelMenu();save();toast('服务商已删除');};
     row.onclick=()=>testProvider(p,true);
     box.appendChild(row);
@@ -3337,6 +3339,56 @@ async function runProbe(mode){
     s.updatedAt=Date.now();save();renderThread();renderChatList();renderSandbox();
   }
 }
+
+/* ================= R16 DEBT · 服务商编辑 + visibility ================= */
+function editProvider(id){
+  const p=DB.providers.find(x=>x.id===id);if(!p)return;
+  const name=prompt('服务商名称',p.name||'');if(name===null||name.trim()==='')return;
+  const base=prompt('Base URL',p.base||'');if(base===null||base.trim()==='')return;
+  const key=prompt('API Key（留空保留原值）',p.key?'':'');
+  p.name=name.trim();
+  p.base=base.trim().replace(/\/$/,'');
+  if(key&&key.trim())p.key=key.trim();
+  p.errMsg='';
+  save();renderProviders();renderModelMenu();
+  toast('已更新。测试连通性…');
+  testProvider(p.id,true);
+}
+function testProvider(pid,notify){
+  const p=DB.providers.find(x=>x.id===pid);if(!p)return;
+  (async()=>{
+    try{
+      const ctl=new AbortController();const t=setTimeout(()=>ctl.abort(),12000);
+      const r=await fetch(p.base+'/models',{signal:ctl.signal,headers:p.key?{'Authorization':'Bearer '+p.key}:{}});
+      clearTimeout(t);
+      if(!r.ok){const txt=await r.text().catch(()=>'');throw new Error('HTTP '+r.status+(txt?' · '+txt.slice(0,120):''));}
+      const j=await r.json();
+      p.models=j.data||j.models||[];
+      p.status='ok';p.errMsg='';
+      if(notify)toast(p.name+' 在线，'+p.models.length+' 个模型');
+    }catch(e){
+      p.status='err';p.errMsg=e.name==='AbortError'?'超时':(e.message==='Failed to fetch'?'连不上/CORS':e.message);
+      if(notify)toast(p.name+'：'+p.errMsg.slice(0,80));
+    }
+    save();renderProviders();renderModelMenu();
+  })();
+}
+// 生成中离开提示
+(function(){
+  const warn='还在生成中，确认离开将丢失当前回复。';
+  let showWarn=false;
+  setInterval(()=>{
+    showWarn=!!state.gen;
+  },1000);
+  window.addEventListener('beforeunload',e=>{
+    if(showWarn){e.preventDefault();e.returnValue=warn;return warn;}
+  });
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden&&showWarn){
+      // 仅记录不弹 toast 防打扰
+    }
+  });
+})();
 
 /* ================= 发送主链路 ================= */
 function buildMessages(s,noImg){
