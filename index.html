@@ -992,6 +992,15 @@ body.less-fx *{animation-duration:.01ms!important;animation-iteration-count:1!im
             <p style="font-size:12px;color:var(--muted);padding:4px 15px 12px;line-height:1.65">工具箱点「图像生成」：已配置则按输入框文案 <code>POST {base}/images/generations</code> 真出图；未配置只引导来这里。结果在对话里可预览/下载。<button type="button" class="chip-btn" style="display:inline;padding:2px 8px;margin-left:4px" onclick="testImageGen()">测试出图</button></p>
           </div>
         </div>
+        <div class="set-group"><b>语音合成 · OpenAI 兼容</b>
+          <div class="card">
+            <div class="field"><label>Base URL</label><div class="fin"><input id="spBase" placeholder="https://api.openai.com/v1" onchange="saveSpeech()" onblur="saveSpeech()"></div></div>
+            <div class="field"><label>API Key · 仅存本机，导出剥离</label><div class="fin"><input id="spKey" type="password" placeholder="sk-…" onchange="saveSpeech()" onblur="saveSpeech()"></div></div>
+            <div class="field"><label>Model</label><div class="fin"><input id="spModel" placeholder="tts-1" onchange="saveSpeech()" onblur="saveSpeech()"></div></div>
+            <div class="field"><label>Voice</label><div class="fin"><input id="spVoice" placeholder="alloy" onchange="saveSpeech()" onblur="saveSpeech()"></div></div>
+            <p style="font-size:12px;color:var(--muted);padding:4px 15px 12px;line-height:1.65">工具箱点「语音合成」：读输入框文本 <code>POST {base}/audio/speech</code> 生成 mp3，可播放/下载。未配置只引导。<button type="button" class="chip-btn" style="display:inline;padding:2px 8px;margin-left:4px" onclick="testSpeech()">测试朗读</button></p>
+          </div>
+        </div>
         <div class="set-group"><b>平台能力</b>
           <div class="card">
             <div class="row"><span class="ric ic-blue"><svg class="i i-s"><use href="#i-globe"/></svg></span><span class="rt"><b>联网搜索</b><span>工具开关镜像 · 真源见上方</span></span><span class="badge badge-ok">输入区</span></div>
@@ -1148,7 +1157,8 @@ function defaults(){return{
   defModel:null,           // {pid,mid}
   mem:[],                  // {id,text,createdAt} 长期记忆
   webSearch:{provider:'tavily',endpoint:'https://api.tavily.com/search',key:''},
-  imageGen:{base:'',key:'',model:'dall-e-3',size:'1024x1024'}
+  imageGen:{base:'',key:'',model:'dall-e-3',size:'1024x1024'},
+  speech:{base:'',key:'',model:'tts-1',voice:'alloy'}
 };}
 let DB=null;
 function loadDB(){
@@ -1175,7 +1185,7 @@ let _focusBack=null;
 function openSheet(n){
   try{_focusBack=document.activeElement;}catch(e){_focusBack=null;}
   closePanels();$(n).classList.add('open');if(window.innerWidth<900)$('scrim').classList.add('on');
-  if(n==='settings'){fillWebSearchForm();fillImageGenForm();}
+  if(n==='settings'){fillWebSearchForm();fillImageGenForm();fillSpeechForm();}
   setTimeout(()=>{const root=$(n);if(!root)return;const f=root.querySelector('input:not([type=hidden]),textarea,button.icon-btn,[tabindex]:not([tabindex="-1"])');if(f)try{f.focus();}catch(e){};},30);
 }
 function closePanels(){$('toolbox').classList.remove('open');$('settings').classList.remove('open');$('modelMenu').classList.remove('open');$('avatars').classList.remove('open');$('sessmenu').classList.remove('open');$('memmgr').classList.remove('open');}
@@ -1997,6 +2007,105 @@ function finishImage(s,ai,sid,txt,prompt){
   toast('出图完成');
 }
 
+/* ================= R2 语音合成 · OpenAI 兼容 ================= */
+function ensureSpeech(){
+  if(!DB.speech)DB.speech={base:'',key:'',model:'tts-1',voice:'alloy'};
+  return DB.speech;
+}
+function speechConfigured(){
+  const s=ensureSpeech();
+  return !!(s.base&&s.base.trim()&&s.key&&s.key.trim());
+}
+function fillSpeechForm(){
+  const s=ensureSpeech();
+  const b=$('spBase'),k=$('spKey'),m=$('spModel'),v=$('spVoice');
+  if(b)b.value=s.base||'';if(k)k.value=s.key||'';if(m)m.value=s.model||'tts-1';if(v)v.value=s.voice||'alloy';
+}
+function saveSpeech(){
+  const s=ensureSpeech();
+  const b=$('spBase'),k=$('spKey'),m=$('spModel'),v=$('spVoice');
+  if(b)s.base=(b.value||'').trim().replace(/\/$/,'');
+  if(k)s.key=(k.value||'').trim();
+  if(m)s.model=(m.value||'').trim()||'tts-1';
+  if(v)s.voice=(v.value||'').trim()||'alloy';
+  save();markToolboxHonesty();
+}
+function speechEndpoint(){
+  const base=(ensureSpeech().base||'').replace(/\/$/,'');
+  if(!base)return '';
+  if(/\/audio\/speech\/?$/.test(base))return base;
+  return base+'/audio/speech';
+}
+async function runTTSFromComposer(){
+  closeAll();
+  const text=($('promptBox').value||'').trim();
+  if(!speechConfigured()){
+    toast('未配置语音 API · 打开 设置→功能 填写 Base/Key');
+    openSheet('settings');
+    const tabs=[...document.querySelectorAll('.set-tab')];
+    const ft=tabs.find(t=>(t.getAttribute('onclick')||'').indexOf('p-func')>=0)||tabs[1]||tabs[0];
+    if(ft)setTab(ft,'p-func');
+    fillSpeechForm();
+    setTimeout(()=>{const el=$('spBase')||$('spKey');if(el)try{el.focus();}catch(e){}},40);
+    return;
+  }
+  if(!text){toast('先在输入框写要朗读的文本，再点语音合成');$('promptBox').focus();return;}
+  if(state.gen)return toast('请等当前结束');
+  const s=ensureSession(text);
+  s.agentId=curAgent;
+  if(!s.model)s.model=(curA().model||DB.defModel)?JSON.parse(JSON.stringify(curA().model||DB.defModel)):null;
+  s.msgs.push({role:'user',content:'[语音合成] '+text});
+  s.updatedAt=Date.now();
+  if(s.msgs.filter(m=>m.role==='user').length===1)s.title=('语音·'+text).slice(0,22);
+  if(DB.prefs.clearAfter!==false)$('promptBox').value='';autoGrow();
+  showThread();renderThread();renderChatList();save();
+  await doTTS(s,text);
+}
+async function testSpeech(){
+  saveSpeech();
+  if(!speechConfigured())return toast('先填 Base URL 与 API Key');
+  const s=ensureSession('测试语音');
+  s.msgs.push({role:'user',content:'[语音·测试] 你好，我是工作台，测试语音合成。'});
+  showThread();renderThread();save();
+  await doTTS(s,'你好，我是工作台，测试语音合成。');
+}
+async function doTTS(s,text){
+  const g=ensureSpeech();
+  const url=speechEndpoint();
+  const sid=pushStep('语音合成','running',(g.model||'')+' · '+(text||'').slice(0,40));
+  const ai={role:'ai',content:'',pending:true,t0:Date.now(),model:{pid:'speech',mid:g.model||'tts-1'}};
+  s.msgs.push(ai);renderThread();
+  try{
+    const ctl=new AbortController();state.gen=ctl;setSendBtn(true);renderSandbox();
+    const body={model:g.model||'tts-1',voice:g.voice||'alloy',input:text};
+    const r=await fetch(url,{
+      method:'POST',signal:ctl.signal,
+      headers:Object.assign({'Content-Type':'application/json'},g.key?{'Authorization':'Bearer '+g.key}:{}),
+      body:JSON.stringify(body)
+    });
+    if(!r.ok){
+      const txt=await r.text().catch(()=>'');
+      throw new Error('HTTP '+r.status+(txt?' · '+txt.slice(0,180):''));
+    }
+    const blob=await r.blob();
+    const blobUrl=URL.createObjectURL(blob);
+    ai.audio=blobUrl;
+    ai.content='已生成语音'+(text?('：'+text.slice(0,60)):'');
+    patchStep(sid,{status:'done',summary:'ok'});
+    toast('语音生成完成');
+  }catch(e){
+    if(e.name==='AbortError'){ai.content='(已停止)';patchStep(sid,{status:'stopped',summary:'用户停止'});}
+    else{
+      ai.err=(e.message==='Failed to fetch')?'语音请求失败：网络或 CORS。请确认 Base 可被网页访问。':(e.message||String(e));
+      patchStep(sid,{status:'error',summary:String(ai.err).slice(0,160)});
+      toast('语音合成失败');
+    }
+  }finally{
+    ai.pending=false;state.gen=null;setSendBtn(false);
+    s.updatedAt=Date.now();save();renderThread();renderChatList();renderSandbox();
+  }
+}
+
 /* ================= 发送主链路 ================= */
 function buildMessages(s,noImg){
   const a=DB.agents[s.agentId]||curA();
@@ -2348,7 +2457,8 @@ function exportData(){
     defModel:DB.defModel,
     providers:DB.providers.map(p=>({id:p.id,name:p.name,base:p.base,models:p.models||[],status:p.status||'',key:''})),
     webSearch:{provider:(DB.webSearch&&DB.webSearch.provider)||'tavily',endpoint:(DB.webSearch&&DB.webSearch.endpoint)||'https://api.tavily.com/search',key:''},
-    imageGen:{base:(DB.imageGen&&DB.imageGen.base)||'',model:(DB.imageGen&&DB.imageGen.model)||'dall-e-3',size:(DB.imageGen&&DB.imageGen.size)||'1024x1024',key:''}
+    imageGen:{base:(DB.imageGen&&DB.imageGen.base)||'',model:(DB.imageGen&&DB.imageGen.model)||'dall-e-3',size:(DB.imageGen&&DB.imageGen.size)||'1024x1024',key:''},
+    speech:{base:(DB.speech&&DB.speech.base)||'',model:(DB.speech&&DB.speech.model)||'tts-1',voice:(DB.speech&&DB.speech.voice)||'alloy',key:''}
   };
   const blob=new Blob([JSON.stringify(dump,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='workbench-backup.json';a.click();
@@ -2381,6 +2491,10 @@ function importData(){
         if(raw.imageGen&&typeof raw.imageGen==='object'){
           DB.imageGen=Object.assign({base:'',key:'',model:'dall-e-3',size:'1024x1024'},DB.imageGen||{},raw.imageGen);
           if(!raw.imageGen.key||/勿外传|redact|\*+|已剥离/i.test(String(raw.imageGen.key)))DB.imageGen.key='';
+        }
+        if(raw.speech&&typeof raw.speech==='object'){
+          DB.speech=Object.assign({base:'',key:'',model:'tts-1',voice:'alloy'},DB.speech||{},raw.speech);
+          if(!raw.speech.key||/勿外传|redact|\*+|已剥离/i.test(String(raw.speech.key)))DB.speech.key='';
         }
         if(Array.isArray(raw.providers)){
           DB.providers=raw.providers.map(p=>({
@@ -2496,11 +2610,10 @@ const activeTools=new Set();
 /** 网页端可真接的挂载工具（可点亮） */
 const TOOL_LIVE=new Set(['联网搜索','深度思考','长期记忆']);
 /** 点击即行动，不进 activeTools 挂载 */
-const TOOL_ACTION=new Set(['视觉理解','图像生成']);
+const TOOL_ACTION=new Set(['视觉理解','图像生成','语音合成']);
 /** 其余全部未接 */
 const TOOL_UNAVAILABLE_HINT={
   '音乐播放':'网页端未接听歌运行时（规划 REAL-4 网关）',
-  '语音合成':'网页端未接 TTS（规划 REAL-2）',
   '视频生成':'网页端未接视频生成',
   '提醒事项':'网页端未接 · 请用系统提醒/Minis',
   '日历':'网页端未接日历',
@@ -2525,6 +2638,7 @@ function markToolboxHonesty(){
     if(TOOL_LIVE.has(t)){badge.textContent='可用';b.classList.add('tb-live');b.disabled=false;b.removeAttribute('aria-disabled');}
     else if(t==='图像生成'){badge.textContent=imageGenConfigured()?'可用·出图':'需配置';b.classList.toggle('tb-live',imageGenConfigured());b.disabled=false;}
     else if(t==='视觉理解'){badge.textContent='选图';b.classList.add('tb-live');b.disabled=false;}
+    else if(t==='语音合成'){badge.textContent=speechConfigured()?'可用·朗读':'需配置';b.classList.toggle('tb-live',speechConfigured());b.disabled=false;}
     else{
       badge.textContent='未接';b.classList.add('tb-off');b.setAttribute('aria-disabled','true');
     }
@@ -2550,6 +2664,7 @@ document.querySelectorAll('.tb-item,.ctx-toggle').forEach(b=>b.addEventListener(
   }
   if(t==='视觉理解'){pickImage();return;}
   if(t==='图像生成'){runImageGenFromComposer();return;}
+  if(t==='语音合成'){runTTSFromComposer();return;}
   if(!TOOL_LIVE.has(t) && b.classList.contains('tb-item')){
     toast(TOOL_UNAVAILABLE_HINT[t]||('「'+t+'」未接'));return;
   }
@@ -2575,7 +2690,7 @@ function slashPrefill(cmd,text){
 /* ================= 初始化 ================= */
 function initPrefsUI(){
   applyTheme(DB.prefs.theme);document.body.style.fontSize=DB.prefs.font;
-  fillWebSearchForm();fillImageGenForm();
+  fillWebSearchForm();fillImageGenForm();fillSpeechForm();
   document.querySelectorAll('#p-app .seg').forEach(seg=>{
     [...seg.children].forEach(b=>{
       const oc=b.getAttribute('onclick')||'';
