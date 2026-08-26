@@ -365,8 +365,12 @@ input,textarea{font-family:inherit;border:none;outline:none;background:none;colo
   display:flex;align-items:center;justify-content:center;transition:transform .2s var(--ease),opacity .2s;
 }
 .send-btn:active{transform:scale(.92)}
-.hint-row{display:flex;justify-content:space-between;max-width:720px;margin:7px auto 0;padding:0 6px;font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.03em}
+.send-btn.disabled{opacity:.38}
+.hint-row{display:flex;justify-content:space-between;max-width:720px;margin:7px auto 0;padding:0 6px;font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.03em;gap:8px}
 .hint-row kbd{font-family:var(--mono);border:1px solid var(--line);border-radius:4px;background:var(--surface);padding:1px 4px;font-size:10px}
+#ctxHint{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex-shrink:1}
+.hint-right{display:flex;gap:10px;align-items:center;flex-shrink:0;white-space:nowrap}
+@media(max-width:480px){.hint-kbd{display:none}}
 
 /* ============ bottom sheet (toolbox) ============ */
 .sheet{
@@ -741,9 +745,9 @@ body.less-fx *{animation-duration:.01ms!important;animation-iteration-count:1!im
         </div>
         <div class="hint-row">
           <span id="ctxHint">上下文就绪</span>
-          <span style="display:flex;gap:10px;align-items:center">
+          <span class="hint-right">
             <button type="button" class="chip-btn" style="padding:2px 6px" onclick="sandboxShow()" id="sbxHintBtn">任务</button>
-            <span><kbd>Enter</kbd> 发送 · <kbd>Shift</kbd>+<kbd>Enter</kbd> 换行</span>
+            <span class="hint-kbd"><kbd>Enter</kbd> 发送 · <kbd>Shift</kbd>+<kbd>Enter</kbd> 换行</span>
           </span>
         </div>
       </div>
@@ -1568,7 +1572,7 @@ function modelLabel(ref){
   const p=DB.providers.find(x=>x.id===ref.pid);
   return (p?p.name+' · ':'')+String(ref.mid).split('/').pop();
 }
-function updateChip(){$('chipName').textContent=modelLabel(currentModelRef());}
+function updateChip(){$('chipName').textContent=modelLabel(currentModelRef());if(!state.gen)updateSendBtnState();}
 function sessionModelLabel(){const s=curSession();return modelLabel((s&&s.model)||currentModelRef());}
 function currentModelRef(){
   const s=curSession();
@@ -1721,7 +1725,7 @@ function sessDel(){
   save();renderChatList();closeAll();toast('会话已删除');
 }
 $('smName').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();saveRename();}});
-function newChat(){stopGen(true);state.curId=null;closeAll();showWelcome();renderChatList();}
+function newChat(){stopGen(true);state.curId=null;closeAll();syncChatSurface();renderChatList();}
 function showWelcome(){
   $('chatView').style.display='none';$('welcomeView').style.display='block';updateChip();refreshMetaNames();
   const tip=$('welcomeProvTip');const tx=$('welcomeProvTipText');
@@ -1742,8 +1746,33 @@ function goSetupProvider(){
   setTimeout(()=>{const n=$('pvName')||$('pvBase');if(n)try{n.focus();}catch(e){}},60);
 }
 function showThread(){$('welcomeView').style.display='none';$('chatView').style.display='block';}
+
+/* ================= UX-1: 统一状态机 =================
+ * 单一入口：boot/newChat/openChatById/sessDel 都走这里。
+ * 无模型或空会话 → welcome；有消息 → thread+renderThread。
+ * 消除"显示N条但无气泡"和"空msgs黑屏"竞态。 */
+function syncChatSurface(){
+  var s=curSession();
+  if(!s||s.msgs.length===0){
+    showWelcome();
+  }else{
+    showThread();
+    renderThread(true);
+  }
+  updateSendBtnState();
+  updateChip();
+  refreshMetaNames();
+  renderSandbox();
+}
+
+/* P0-4: 发送键 disabled 视觉——无模型灰掉 */
+function updateSendBtnState(){
+  var b=document.querySelector('.send-btn');
+  if(!b)return;
+  if(!state.gen)b.classList.toggle('disabled',!currentModelRef());
+}
 function openChatById(id){
-  stopGen(true);state.curId=id;closeAll();showThread();renderThread(true);renderChatList();updateChip();refreshMetaNames();
+  stopGen(true);state.curId=id;closeAll();syncChatSurface();renderChatList();
 }
 function ensureSession(firstText){
   let s=curSession();
@@ -1809,7 +1838,12 @@ function msgAIHTML(m,total){
 function renderThread(scroll){
   const th=$('thread');th.innerHTML='';
   CODE_STORE.length=0;CODE_IDX.clear();
-  const s=curSession();if(!s)return;
+  const s=curSession();
+  if(!s||s.msgs.length===0){
+    /* 空会话不留在空白 thread，交给状态机收束 */
+    if($('chatView').style.display!=='none')syncChatSurface(scroll);
+    return;
+  }
   s.msgs.forEach((m,i)=>{
     m.i=i;
     const div=document.createElement('div');
@@ -3519,6 +3553,7 @@ function setSendBtn(gen){
   const b=document.querySelector('.send-btn');if(!b)return;
   b.setAttribute('aria-label',gen?'停止':'发送');
   b.title=gen?'停止生成':'发送';
+  b.classList.toggle('disabled',false);
   b.innerHTML=`<svg class="i i-s" fill="currentColor"><use href="#${gen?'i-pause':'i-up'}"/></svg>`;
 }
 async function readSSE(r,ai){
@@ -3625,7 +3660,7 @@ async function sendMsg(){
   s._web=await runWebSearchIfNeeded(txt);
   await callAPI(s);
 }
-function autoGrow(){const t=$('promptBox');t.style.height='auto';t.style.height=Math.min(t.scrollHeight,132)+'px';}
+function autoGrow(){const t=$('promptBox');t.style.height='auto';t.style.height=Math.min(t.scrollHeight,132)+'px';if(!state.gen)updateSendBtnState();}
 $('promptBox').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();}});
 $('promptBox').addEventListener('paste',e=>{
   const files=[...(e.clipboardData&&e.clipboardData.files||[])].filter(f=>f.type&&f.type.startsWith('image/'));
@@ -3715,7 +3750,7 @@ function updateCtx(){
   const cap=DB.prefs.maxTok||8192;
   const pct=Math.min(100,Math.round(tok/cap*100));
   const k=(tok>=1000?(tok/1000).toFixed(1):(tok/1000).toFixed(2)).replace(/\.0$/,'');
-  el.textContent=n+' 条 · 约 '+k+'k / '+Math.round(cap/1000)+'k'+(pct>=85?' · 将裁旧消息':'');
+  el.textContent=n+' · '+k+'k / '+Math.round(cap/1000)+'k'+(pct>=85?' · 裁旧':'');
   el.title='粗估 tokens≈字数/3.5，上限 prefs.maxTok；发送时 buildMessages 从旧到新裁剪';
   el.style.color=pct>=100?'var(--red-t,#b54)':pct>=85?'var(--acc)':'';
 }
@@ -3898,12 +3933,14 @@ function patchStep(id,patch){
 function renderSandbox(){
   const box=$('sandbox');if(!box)return;
   const hide=!!DB.prefs.sandboxHide;
-  const open=!!DB.prefs.sandboxOpen&&!hide;
   const steps=state.steps;
   const running=steps.some(s=>s.status==='running')||!!state.gen;
+  /* P0-2: 空闲（无步骤无运行）清脏档 sandboxOpen，body 收起只留 bar */
+  if(!steps.length&&!running)DB.prefs.sandboxOpen=false;
+  const open=!!DB.prefs.sandboxOpen&&!hide;
   box.hidden=hide&&!running;
   if(hide&&running){box.hidden=false;} // 进行中强制露一条，仍可再藏
-  if(DB.prefs.sandboxHide&&!running){box.hidden=true;}
+  if(hide&&!running){box.hidden=true;}
   box.classList.toggle('open',open);
   const bar=$('sbxBar');if(bar)bar.setAttribute('aria-expanded',open?'true':'false');
   const dot=$('sbxDot');const title=$('sbxTitle');const meta=$('sbxMeta');
@@ -4067,10 +4104,10 @@ function initPrefsUI(){
 }
 (function init(){
   renderAgents();selectAgent(0);renderMyAvPick();applyMyAv();
-  renderProviders();renderModelMenu();updateChip();
+  renderProviders();renderModelMenu();
   renderChatList();initPrefsUI();syncBtns();markToolboxHonesty();renderSandbox();
-  if(DB.sessions.length){const s=[...DB.sessions].sort((a,b)=>b.updatedAt-a.updatedAt)[0];openChatById(s.id);}
-  else showWelcome();
+  if(DB.sessions.length){const s=[...DB.sessions].sort((a,b)=>b.updatedAt-a.updatedAt)[0];state.curId=s.id;syncChatSurface();renderChatList();}
+  else syncChatSurface();
 })();
 
 /* ================= 附录：默认温度 / 占位符联动 ================= */
