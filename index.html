@@ -1031,6 +1031,14 @@ body.less-fx *{animation-duration:.01ms!important;animation-iteration-count:1!im
             <p style="font-size:12px;color:var(--muted);padding:4px 15px 12px;line-height:1.65">工具箱点「文件」选本机文件：文本/Markdown 预览摘要、图片尺寸、CSV 前几行表格化，均在本地完成。PDF 需网关 <code>POST {base}/v1/files/extract</code>，未配网关时如实提示。</p>
           </div>
         </div>
+        <div class="set-group"><b>代码运行 · 执行网关</b>
+          <div class="card">
+            <div class="field"><label>网关 Base URL</label><div class="fin"><input id="cdGwBase" placeholder="https://your-gw.example" onchange="saveCode()" onblur="saveCode()"></div></div>
+            <div class="field"><label>网关 Token</label><div class="fin"><input id="cdGwToken" type="password" placeholder="鉴权 token" onchange="saveCode()" onblur="saveCode()"></div></div>
+            <div class="field"><label>默认语言</label><div class="fin"><input id="cdLang" placeholder="python" onchange="saveCode()" onblur="saveCode()"></div></div>
+            <p style="font-size:12px;color:var(--muted);padding:4px 15px 12px;line-height:1.65">工具箱点「代码」把输入框内容当代码提交执行网关 <code>POST {base}/v1/code/run</code>（body: lang/code/timeout_ms），回显 stdout/stderr/exit_code。本页不做浏览器内 eval。未配置只引导。</p>
+          </div>
+        </div>
         <div class="set-group"><b>测站 · 浏览器直连 + 可选网关</b>
           <div class="card">
             <div class="field"><label>网关 Base URL（可选）</label><div class="fin"><input id="pbGwBase" placeholder="留空走浏览器直连" onchange="saveProbe()" onblur="saveProbe()"></div></div>
@@ -1202,7 +1210,8 @@ function defaults(){return{
   probe:{gwBase:'',gwToken:'',defaultTargets:''},
   nodes:{gwBase:'',gwToken:''},
   music:{gwBase:'',gwToken:''},
-  files:{gwBase:'',gwToken:''}
+  files:{gwBase:'',gwToken:''},
+  code:{gwBase:'',gwToken:'',lang:'python'}
 };}
 let DB=null;
 function loadDB(){
@@ -1229,7 +1238,7 @@ let _focusBack=null;
 function openSheet(n){
   try{_focusBack=document.activeElement;}catch(e){_focusBack=null;}
   closePanels();$(n).classList.add('open');if(window.innerWidth<900)$('scrim').classList.add('on');
-  if(n==='settings'){fillWebSearchForm();fillImageGenForm();fillSpeechForm();fillVideoForm();fillProbeForm();fillNodesForm();fillMusicForm();fillFilesForm();}
+  if(n==='settings'){fillWebSearchForm();fillImageGenForm();fillSpeechForm();fillVideoForm();fillProbeForm();fillNodesForm();fillMusicForm();fillFilesForm();fillCodeForm();}
   setTimeout(()=>{const root=$(n);if(!root)return;const f=root.querySelector('input:not([type=hidden]),textarea,button.icon-btn,[tabindex]:not([tabindex="-1"])');if(f)try{f.focus();}catch(e){};},30);
 }
 function closePanels(){$('toolbox').classList.remove('open');$('settings').classList.remove('open');$('modelMenu').classList.remove('open');$('avatars').classList.remove('open');$('sessmenu').classList.remove('open');$('memmgr').classList.remove('open');}
@@ -2285,6 +2294,73 @@ async function doVideo(s,prompt){
   }
 }
 
+/* ================= R8 代码运行 · 执行网关 ================= */
+function ensureCode(){
+  if(!DB.code)DB.code={gwBase:'',gwToken:'',lang:'python'};
+  return DB.code;
+}
+function codeConfigured(){
+  const c=ensureCode();return !!(c.gwBase&&c.gwBase.trim()&&c.gwToken&&c.gwToken.trim());
+}
+function fillCodeForm(){
+  const c=ensureCode();const b=$('cdGwBase'),t=$('cdGwToken'),l=$('cdLang');
+  if(b)b.value=c.gwBase||'';if(t)t.value=c.gwToken||'';if(l)l.value=c.lang||'python';
+}
+function saveCode(){
+  const c=ensureCode();const b=$('cdGwBase'),t=$('cdGwToken'),l=$('cdLang');
+  if(b)c.gwBase=(b.value||'').trim().replace(/\/$/,'');if(t)c.gwToken=(t.value||'').trim();if(l)c.lang=(l.value||'').trim()||'python';save();markToolboxHonesty();
+}
+async function runCode(){
+  closeAll();
+  if(!codeConfigured()){
+    toast('未配置代码网关 · 打开 设置→功能 填写 Base/Token');
+    openSheet('settings');const tabs=[...document.querySelectorAll('.set-tab')];
+    const ft=tabs.find(t=>(t.getAttribute('onclick')||'').indexOf('p-func')>=0)||tabs[1]||tabs[0];
+    if(ft)setTab(ft,'p-func');fillCodeForm();
+    setTimeout(()=>{const el=$('cdGwBase');if(el)try{el.focus();}catch(e){}},40);return;
+  }
+  const code=($('promptBox').value||'').trim();
+  if(!code){toast('在输入框写要运行的代码，再点代码');$('promptBox').focus();return;}
+  if(state.gen)return toast('请等当前结束');
+  const c=ensureCode();
+  const lang=(c.lang||'python').trim()||'python';
+  const s=ensureSession('代码运行');
+  s.msgs.push({role:'user',content:'[代码] '+lang+'\n'+code.slice(0,300)});
+  s.updatedAt=Date.now();
+  if(s.msgs.filter(m=>m.role==='user').length===1)s.title='代码运行';
+  if(DB.prefs.clearAfter!==false)$('promptBox').value='';autoGrow();
+  showThread();renderThread();renderChatList();save();
+  const sid=pushStep('运行代码','running',lang);
+  const ai={role:'ai',content:'',pending:true,t0:Date.now(),model:{pid:'code'}};
+  s.msgs.push(ai);renderThread();
+  try{
+    const ctl=new AbortController();state.gen=ctl;setSendBtn(true);renderSandbox();
+    const r=await fetch(c.gwBase+'/v1/code/run',{
+      method:'POST',signal:ctl.signal,
+      headers:Object.assign({'Content-Type':'application/json'},c.gwToken?{'Authorization':'Bearer '+c.gwToken}:{}),
+      body:JSON.stringify({lang,code,timeout_ms:8000})
+    });
+    if(!r.ok){const t=await r.text().catch(()=>'');throw new Error('HTTP '+r.status+(t?' · '+t.slice(0,160):''));}
+    const j=await r.json();
+    const stdout=String(j.stdout||'');
+    const stderr=String(j.stderr||'');
+    const exit=Number(j.exit_code!==undefined?j.exit_code:(j.exitCode!==undefined?j.exitCode:0));
+    const outLines=['**代码运行 · '+esc(lang)+' · exit '+(exit===0?'0':'非0('+exit+')')+'**'];
+    if(stdout)outLines.push('\n**stdout**\n\n```\n'+stdout.slice(0,2000)+(stdout.length>2000?'\n…(截断)':'')+'\n```');
+    if(stderr)outLines.push('\n**stderr**\n\n```\n'+stderr.slice(0,2000)+(stderr.length>2000?'\n…(截断)':'')+'\n```');
+    if(!stdout&&!stderr)outLines.push('\n（无输出）');
+    ai.content=outLines.join('\n');
+    patchStep(sid,{status:'done',summary:'exit '+exit});
+    toast('运行完成');
+  }catch(e){
+    if(e.name==='AbortError'){ai.content='(已停止)';patchStep(sid,{status:'stopped',summary:'用户停止'});}
+    else{ai.err='运行失败：'+(e.message||String(e));patchStep(sid,{status:'error',summary:String(ai.err).slice(0,160)});toast('运行失败');}
+  }finally{
+    ai.pending=false;state.gen=null;setSendBtn(false);
+    s.updatedAt=Date.now();save();renderThread();renderChatList();renderSandbox();
+  }
+}
+
 /* ================= R7 文件处理 · 本机 + PDF 网关 ================= */
 function ensureFiles(){
   if(!DB.files)DB.files={gwBase:'',gwToken:''};
@@ -3024,7 +3100,8 @@ function exportData(){
     probe:{gwBase:(DB.probe&&DB.probe.gwBase)||'',defaultTargets:(DB.probe&&DB.probe.defaultTargets)||'',gwToken:''},
     nodes:{gwBase:(DB.nodes&&DB.nodes.gwBase)||'',gwToken:''},
     music:{gwBase:(DB.music&&DB.music.gwBase)||'',gwToken:''},
-    files:{gwBase:(DB.files&&DB.files.gwBase)||'',gwToken:''}
+    files:{gwBase:(DB.files&&DB.files.gwBase)||'',gwToken:''},
+    code:{gwBase:(DB.code&&DB.code.gwBase)||'',lang:(DB.code&&DB.code.lang)||'python',gwToken:''}
   };
   const blob=new Blob([JSON.stringify(dump,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='workbench-backup.json';a.click();
@@ -3081,6 +3158,10 @@ function importData(){
         if(raw.files&&typeof raw.files==='object'){
           DB.files=Object.assign({gwBase:'',gwToken:''},DB.files||{},raw.files);
           if(!raw.files.gwToken||/勿外传|redact|\*+|已剥离/i.test(String(raw.files.gwToken)))DB.files.gwToken='';
+        }
+        if(raw.code&&typeof raw.code==='object'){
+          DB.code=Object.assign({gwBase:'',gwToken:'',lang:'python'},DB.code||{},raw.code);
+          if(!raw.code.gwToken||/勿外传|redact|\*+|已剥离/i.test(String(raw.code.gwToken)))DB.code.gwToken='';
         }
         if(Array.isArray(raw.providers)){
           DB.providers=raw.providers.map(p=>({
@@ -3196,7 +3277,7 @@ const activeTools=new Set();
 /** 网页端可真接的挂载工具（可点亮） */
 const TOOL_LIVE=new Set(['联网搜索','深度思考','长期记忆']);
 /** 点击即行动，不进 activeTools 挂载 */
-const TOOL_ACTION=new Set(['视觉理解','图像生成','语音合成','视频生成','测站','站点体检','节点同步','音乐播放','文件处理']);
+const TOOL_ACTION=new Set(['视觉理解','图像生成','语音合成','视频生成','测站','站点体检','节点同步','音乐播放','文件处理','代码运行']);
 /** 其余全部未接 */
 const TOOL_UNAVAILABLE_HINT={
   '提醒事项':'网页端未接 · 请用系统提醒/Minis',
@@ -3206,7 +3287,6 @@ const TOOL_UNAVAILABLE_HINT={
   '健康数据':'网页端未接 HealthKit',
   '终端执行':'网页端未接终端（规划 REAL-5 网关）',
   '浏览器自动化':'网页端未接浏览器自动化',
-  '代码运行':'网页端未接代码执行',
   '仓库同步':'网页端未接 git 推送',
 };
 
@@ -3225,6 +3305,7 @@ function markToolboxHonesty(){
     else if(t==='节点同步'){badge.textContent=nodesConfigured()?'可用':'需配置';b.classList.toggle('tb-live',nodesConfigured());b.disabled=false;}
     else if(t==='音乐播放'){badge.textContent=musicConfigured()?'可用·听歌':'需配置';b.classList.toggle('tb-live',musicConfigured());b.disabled=false;}
     else if(t==='文件处理'){badge.textContent='可用';b.classList.add('tb-live');b.disabled=false;}
+    else if(t==='代码运行'){badge.textContent=codeConfigured()?'可用·运行':'需配置';b.classList.toggle('tb-live',codeConfigured());b.disabled=false;}
     else{
       badge.textContent='未接';b.classList.add('tb-off');b.setAttribute('aria-disabled','true');
     }
@@ -3257,6 +3338,7 @@ document.querySelectorAll('.tb-item,.ctx-toggle').forEach(b=>b.addEventListener(
   if(t==='节点同步'){runNodes();return;}
   if(t==='音乐播放'){runMusic();return;}
   if(t==='文件处理'){runFiles();return;}
+  if(t==='代码运行'){runCode();return;}
   if(!TOOL_LIVE.has(t) && b.classList.contains('tb-item')){
     toast(TOOL_UNAVAILABLE_HINT[t]||('「'+t+'」未接'));return;
   }
@@ -3282,7 +3364,7 @@ function slashPrefill(cmd,text){
 /* ================= 初始化 ================= */
 function initPrefsUI(){
   applyTheme(DB.prefs.theme);document.body.style.fontSize=DB.prefs.font;
-  fillWebSearchForm();fillImageGenForm();fillSpeechForm();fillVideoForm();fillProbeForm();fillNodesForm();fillMusicForm();fillFilesForm();
+  fillWebSearchForm();fillImageGenForm();fillSpeechForm();fillVideoForm();fillProbeForm();fillNodesForm();fillMusicForm();fillFilesForm();fillCodeForm();
   document.querySelectorAll('#p-app .seg').forEach(seg=>{
     [...seg.children].forEach(b=>{
       const oc=b.getAttribute('onclick')||'';
